@@ -1,0 +1,151 @@
+CSVLearner - Machine learning software using CSV files for features
+Copyright (c) 2011 by Assaf Urieli
+Distributed under the GPLv3 license.
+
+Usage (* indicates optional):
+
+Two types of file are required as an input to csvLearner.
+
+Result file: a CSV file giving the expected outcome for each event, required when training.
+The format of the file is (note the first row is ignored):
+eventId,outcome
+id1,A
+id2,A
+id3,B
+id4,B
+etc.
+
+Feature file: a CSV file giving feature values for each event.
+There can be many feature files for a given learning task, all tied together by the event ids.
+However, a given feature name should only exist in a single feature file.
+The format of the file is:
+eventId,featureName1,featureName2,featureName3
+id1,0.1,x,10
+id2,0.3,y,20
+id3,1.44,z,44
+id4,0.8,x,80
+etc.
+Note that feature values can be either numeric or nominal.
+A given feature can include a mix of numeric and nominal values: any value that can be interpreted as numeric will.
+
+Commands:
+
+command=evaluate resultFile=[filePath] featureDir=[directoryPath] maxentModel=[filePath] testSegment=[0..9] iterations=[positive integer]* cutoff=[non-negative integer]* sigma=[positive real]*
+The evaluate command will train a Maxent model using 9/10 of the training corpus, and evaluate the corpus on the remaining 10% of the corpus.
+10-fold cross-validation is possible using testSegment=cross.
+- resultFile: a CSV file giving correct results for each message
+- featureDir: directory containing all feature files in csv format
+- maxentModel: the filepath where the maxent model should be stored (must end with .zip)
+- eventFile*: true/false - whether a file should be generated listing all of the events. Default: false.
+- detailFile*: true/false - whether a file should be generated giving full analysis details. Warning: can get huge! Default: false.
+- testSegment: for each block of 10 rows in the results file, the index of the row which should be considered as test. A special value of "cross" indicates cross-validation of all ten segments.
+- iterations*: maxent training iterations. Default: 100
+- cutoff*: maxent training cutoff. Default: 5		
+- smoothing*: if > 0, will be used for additive smoothing of the values in the maxent model. Typical value: 0.1. Default: 0		
+- sigma*: if > 0, will be used for Gaussian smoothing of the maxent model. Typical value: 1.0. Default: 0		
+- preferredOutcome*: if provided, will give a positive bias to a certain outcome
+- bias*: if preferredOutcome has been provided, then the probability for the preferred outcome will be (p+bias)/(1+bias). The probability for all other outcomes will be p/(1+bias)
+Produces 3 files:
+- [maxentModel].fscores.csv: the confusion matrix, recall, precision and f-score for each class and total accuracy
+- [maxentModel].outcomes.csv: for each event, the identifier, expected outcome, guessed outcome, and the probabilities for each possible outcome
+- [maxentModel]: the re-useable Maxent model
+
+command=train resultFile=[filePath] featureDir=[directoryPath] maxentModel=[filePath] iterations=[positive integer]* cutoff=[non-negative integer]* sigma=[positive real]*
+The train command will train a Maxent model using the entire training corpus.
+The resulting model can be used for the analyse command.
+Numeric features should be normalised or discretized before training for best results.
+- resultFile: a CSV file giving correct results for each message
+- featureDir: directory containing all feature files in csv or zip format
+- maxentModel: the filepath where the maxent model should be stored (must end with .zip)
+- eventFile*: true/false - whether a file should be generated listing all of the events. Default: false.
+- iterations*: maxent training iterations. Default: 100
+- cutoff*: maxent training cutoff. Default: 5		
+- smoothing*: if > 0, will be used for additive smoothing of the values in the maxent model. Typical value: 0.1. Default: 0		
+- sigma*: if > 0, will be used for Gaussian smoothing of the maxent model. Typical value: 1.0. Default: 0
+Produces 1 file:
+- [maxentModel]: the re-useable Maxent model
+
+command=analyse outfile=[filePath] featureDir=[directoryPath] maxentModel=[filePath]
+The analyse command will analyse a set of data using a previously trained Maxent model.
+Numeric features should be normalised using the previously trained Maxent model before analysing.
+- outfile: to filepath to which the CSV outcomes should be written				
+- featureDir: directory containing all feature files in csv format
+- maxentModel: the filepath to the previously trained maxent model that will be used for the analysis (must end with .zip)
+- resultFile*: a CSV file giving correct results for each message. If provided, will generate a csv showing f-scores for each outcome.
+- eventFile*: true/false - whether a file should be generated listing all of the events. Default: false.
+- preferredOutcome*: if provided, will give a positive bias to a certain outcome
+- bias*: if preferredOutcome has been provided, then the probability for the preferred outcome will be (p+bias)/(1+bias). The probability for all other outcomes will be p/(1+bias)
+Produces the following files:
+- [outfile]: depending on the file extension, either a simple XML file giving guessed outcomes for each event, or a CSV file identical in format to [maxentModel].outcomes.csv above.
+- [outfile].fscores.csv: if resultFile has been provided, this file will be identical to [maxentModel].fscores.csv above.
+
+command=normalize featureDir=[directoryPath] groupedFeatureDir=[directoryPath] outDir=[directoryPath] maxentModel*=[filePath]
+The normalize command will normalise a set of features so that they are all at scale from 0 to 1.
+The user should decide which features should be normalised based on the max value of the entire file (groupedFeatureDir)
+and which features should be normalised based on the max value in the feature column only (featureDir).
+When normalising a test set to be analysed using a previously trained Maxent model,
+the user should indicate the maxentModel to ensure that normalisation uses the same scale for each feature as was used in training.
+- featureDir: directory containing all feature files in csv or zip format
+- groupedFeatureDir*: directory containing feature files that should be normalised file by file rather than feature by feature.
+- outDir: directory where we should write the classified feature files in csv or zip format
+- maxentModel*: when normalising the features of a test set, the filepath to the previously trained maxent model which will be used for analysis. Needed to ensure normalisation uses the same max values for each feature. (must end with .zip)
+- zipEntryPerEvent*: for files in zip format, if true, will generate a separate zip entry per event. If false, will create a single csv zip entry. Default: false.
+- missingValueString*: The string to use for missing values. Default: empty string.
+- normaliseMethod*: [mean|max]. Normalize using max=1.0 or mean=0.5. Default: max.
+- singleFile*: path to a single file where all features should be grouped together. If left blank, individual files will be generated.
+Produces for each feature file:
+- [outDir]/[prefix][filename]: the normalised features (with prefix n_ or ng_ depending on individual or group normalisation, + mean_ if normalised by mean value).
+- [outDir]/[prefix][filename].nrm_limits.csv: the max value for each feature in the file, used later for normalising test sets using the same scale
+
+command=copy featureDir=[directoryPath] outDir=[directoryPath]
+The copy command can be used for adding prefixes to identifier names (to combine distinct training sets without unique identifiers), combining files, excluding events with certain outcomes, etc.
+- featureDir: directory containing all feature files in csv or zip format
+- outDir: directory where we should write the classified feature files in csv or zip format
+- zipEntryPerEvent*: for files in zip format, if true, will generate a separate zip entry per event. If false, will create a single csv zip entry. Default: false.
+- missingValueString*: The string to use for missing values. Default: empty string.
+- singleFile*: path to a single file where all features should be grouped together. If left blank, individual files will be generated.
+- identifierPrefix*: a prefix to add to the identifiers (in the case when we're combining different datasets which share identifiers for distinct events).
+- filePrefix*: a prefix to add to files when singleFile is not specified.
+- excludedOutcomes*: comma-separated list of outcomes whose corresponding events should be left out of the copy
+- combineFiles*: a comma-separated list of filename portions indicating how files should be combined into a single file after copying. If combinedFiles=Test1,Test2, than the files featuresTest1.csv and featuresTest2.csv will combined into a single file called features.csv.
+
+command=discretize featureDir=[directoryPath] informationGainThreshold*=[0.0..100.0] minNodeSize*=[1..n] maxDepth*=[1..n] test*=[FayyadIrani|null]
+The discretize command can be used for transforming a numeric event into a nominal event, typically using the FayyadIrani MDL discretization test.
+Currently, while discretization is supported for the evaluate command, it is not yet fully supported for the train/analyse commands.
+- featureDir: directory containing all feature files in csv or zip format
+- outDir: directory where we should write the classified feature files in csv or zip format
+- informationGainThreshold*: [0,1). Min information gain threshold as a % of the total entropy for the collection of events. Default: 0.
+- minNodeSize*: Minimum number of data points to form a class. Default: 1.
+- maxDepth*: Max splitting depth. If maxDepth=n, we will have at most 2^n splitsDefault: none.
+- minErrorRate*: If a node has error rate < minErrorRate, don't bother splitting. The error rate is defined as the (|node| - |majorityClass|)/|node|. Default: none.
+- resultFile*: a CSV file giving correct results for each message
+- testSegment*: for each block of 10 rows in the results file, the index of the row which should be considered as test.
+- test*: which type of test to apply - currently only FayyadIrani. Will ignore informationGainThreshold if specified.
+- zipEntryPerEvent*: for files in zip format, if true, will generate a separate zip entry per event. If false, will create a single csv zip entry. Default: false.
+
+command=writeModelToCSV maxentModel=[filePath] outfile=[filePath]
+The writeModelToCSV command can be used to examine the contents of a maxent model.
+- maxentModel: the filepath to the maxent model
+- outfile: to filepath to which the CSV should be written
+
+Typical usage:
+To normalise numeric features:
+java -Xmx1024M -jar csvLearner-0.2.4.jar command=normalize featureDir=SmallTrain/features groupedFeatureDir=SmallTrain/groupedFeatures outDir=SmallTrain/normalisedFeatures
+
+To evaluate features on a training corpus:
+java -Xmx1024M -jar csvLearner-0.2.4.jar command=evaluate resultFile=SmallTrain/smallTrainResults.csv featureDir=SmallTrain/normalisedFeatures testSegment=0 iterations=200 cutoff=0 smoothing=0 maxentModel=SmallTrain1.zip
+
+To train:
+java -Xmx1024M -jar csvLearner-0.2.4.jar command=train resultFile=SmallTrain/smallTrainResults.csv featureDir=SmallTrain/normalisedFeatures iterations=200 cutoff=0 smoothing=0 maxentModel=SmallTrain1.zip
+
+To normalise numeric features of a test set before analysing:
+java -Xmx1024M -jar csvLearner-0.2.4.jar command=normalize maxentModel=SmallTrain1.zip featureDir=SmallTest/features outDir=SmallTest/normalisedFeatures
+
+To analyse a test set (with unknown outcomes):
+java -Xmx1024M -jar csvLearner-0.2.4.jar command=analyse featureDir=SmallTest/normalisedFeatures maxentModel=SmallTrain1.zip outfile=SmallTestResults.xml
+
+To analyse a test set (with known outcomes):
+java -Xmx1024M -jar csvLearner-0.2.3.jar command=analyse featureDir=SmallTest/normalisedFeatures maxentModel=SmallTrain1.zip outfile=SmallTestResults.csv
+
+Please send any comments, bugs or suggestions to Assaf Urieli at:
+assaf.urieli@gmail.com
