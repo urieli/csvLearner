@@ -34,7 +34,7 @@ import opennlp.maxent.io.SuffixSensitiveGISModelWriter;
 import opennlp.model.AbstractModel;
 import opennlp.model.DataIndexer;
 import opennlp.model.MaxentModel;
-import opennlp.model.OnePassRealValueDataIndexer;
+import opennlp.model.TwoPassRealValueDataIndexer;
 
 /**
  * Given a set of events, trains a maxent model using the GIS algorithm.
@@ -53,10 +53,8 @@ public class MaxentTrainer {
 	public MaxentModel train(GenericEvents events) {
 		try {
 			GenericEventMapEventStream eventStream = new GenericEventMapEventStream(events);
-			// Note: two-pass indexer does not maintain values
-			//DataIndexer dataIndexer = new TwoPassDataIndexer(eventStream, cutoff);
-			DataIndexer dataIndexer = new OnePassRealValueDataIndexer(eventStream, cutoff);
-			// AbstractModel model = GIS.trainModel(iterations, dataIndexer);
+			DataIndexer dataIndexer = new TwoPassRealValueDataIndexer(eventStream, cutoff);
+
 			GISTrainer trainer = new GISTrainer(true);
 			if (sigma>0)
 				trainer.setGaussianSigma(sigma);

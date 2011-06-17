@@ -92,7 +92,6 @@ the user should indicate the maxentModel to ensure that normalisation uses the s
 - zipEntryPerEvent*: for files in zip format, if true, will generate a separate zip entry per event. If false, will create a single csv zip entry. Default: false.
 - missingValueString*: The string to use for missing values. Default: empty string.
 - normaliseMethod*: [mean|max]. Normalize using max=1.0 or mean=0.5. Default: max.
-- singleFile*: path to a single file where all features should be grouped together. If left blank, individual files will be generated.
 Produces for each feature file:
 - [outDir]/[prefix][filename]: the normalised features (with prefix n_ or ng_ depending on individual or group normalisation, + mean_ if normalised by mean value).
 - [outDir]/[prefix][filename].nrm_limits.csv: the max value for each feature in the file, used later for normalising test sets using the same scale

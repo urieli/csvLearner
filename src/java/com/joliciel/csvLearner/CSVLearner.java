@@ -234,7 +234,7 @@ public class CSVLearner {
 			throw new RuntimeException("Missing argument: command");
 		
 		if (informationGainThreshold<0 || informationGainThreshold>=1)
-			throw new RuntimeException("informationGainThreshold out of range: " + informationGainThreshold);		
+			throw new RuntimeException("informationGainThreshold must be in the range (0,1]: " + informationGainThreshold);		
 	}
 	
 	/**
@@ -432,79 +432,47 @@ public class CSVLearner {
 				zis.close();
 			}
 
-			if (singleFile!=null) {
-				GenericEvents events = reader.getEvents();
+			Map<String,GenericEvents> eventToFileMap = reader.getEventsPerFile();
+			
+			// normalising & write to directory
+			for (Entry<String,GenericEvents> fileEvents : eventToFileMap.entrySet()) {
+				String filename = fileEvents.getKey();
+				LOG.debug("Normalizing file: " + filename);
+				GenericEvents events = fileEvents.getValue();
+	
 				RealValueFeatureNormaliser normaliser = null;
 				if (havePreviousLimits)
 					normaliser = new RealValueFeatureNormaliser(normalisationLimits, events);
 				else
 					normaliser = new RealValueFeatureNormaliser(reader, events);
 				normaliser.setNormaliseMethod(normaliseMethod);
-
 				normaliser.normalise();
-				
 				if (!havePreviousLimits)
 					normalisationLimits = normaliser.getFeatureToMaxMap();
-
-				File file = new File(outDir + "/" + singleFile);
+				
+				String prefix = null;
+				if (reader.getGroupedFiles().contains(filename))
+					prefix = "ng_";
+				else
+					prefix = "n_";
+				
+				if (normaliseMethod.equals(NormaliseMethod.NORMALISE_BY_MEAN))
+					prefix += "mean_";
+				
+				File file = new File(outDir + "/" + prefix + filename);
 				CSVEventListWriter eventListWriter = new CSVEventListWriter(file);
-				if (singleFile.endsWith(".zip"))
+				if (filename.endsWith(".zip"))
 					eventListWriter.setFilePerEvent(zipEntryPerEvent);
 				if (missingValueString!=null)
 					eventListWriter.setMissingValueString(missingValueString);
 				if (identifierPrefix!=null)
 					eventListWriter.setIdentifierPrefix(identifierPrefix);
-				eventListWriter.setIncludeOutcomes(includeOutcomes);
 				eventListWriter.writeFile(events);
 				
 				if (!havePreviousLimits) {
-					File normalisationLimitFile = new File(outDir + "/" + singleFile + ".nrm_limits.csv");
+					File normalisationLimitFile = new File(outDir + "/" + prefix + filename + ".nrm_limits.csv");
 					NormalisationLimitWriter limitWriter = new NormalisationLimitWriter(normalisationLimitFile);
 					limitWriter.writeFile(normalisationLimits);
-				}
-			} else {
-				Map<String,GenericEvents> eventToFileMap = reader.getEventsPerFile();
-				
-				// normalising & write to directory
-				for (Entry<String,GenericEvents> fileEvents : eventToFileMap.entrySet()) {
-					String filename = fileEvents.getKey();
-					LOG.debug("Normalizing file: " + filename);
-					GenericEvents events = fileEvents.getValue();
-		
-					RealValueFeatureNormaliser normaliser = null;
-					if (havePreviousLimits)
-						normaliser = new RealValueFeatureNormaliser(normalisationLimits, events);
-					else
-						normaliser = new RealValueFeatureNormaliser(reader, events);
-					normaliser.setNormaliseMethod(normaliseMethod);
-					normaliser.normalise();
-					if (!havePreviousLimits)
-						normalisationLimits = normaliser.getFeatureToMaxMap();
-					
-					String prefix = null;
-					if (reader.getGroupedFiles().contains(filename))
-						prefix = "ng_";
-					else
-						prefix = "n_";
-					
-					if (normaliseMethod.equals(NormaliseMethod.NORMALISE_BY_MEAN))
-						prefix += "mean_";
-					
-					File file = new File(outDir + "/" + prefix + filename);
-					CSVEventListWriter eventListWriter = new CSVEventListWriter(file);
-					if (filename.endsWith(".zip"))
-						eventListWriter.setFilePerEvent(zipEntryPerEvent);
-					if (missingValueString!=null)
-						eventListWriter.setMissingValueString(missingValueString);
-					if (identifierPrefix!=null)
-						eventListWriter.setIdentifierPrefix(identifierPrefix);
-					eventListWriter.writeFile(events);
-					
-					if (!havePreviousLimits) {
-						File normalisationLimitFile = new File(outDir + "/" + prefix + filename + ".nrm_limits.csv");
-						NormalisationLimitWriter limitWriter = new NormalisationLimitWriter(normalisationLimitFile);
-						limitWriter.writeFile(normalisationLimits);
-					}
 				}
 				
 			}
