@@ -642,12 +642,22 @@ public class CSVLearner {
 		} else if (command.equals("writeModelToCSV")) {
 			if (maxentModelFilePath==null)
 				throw new RuntimeException("Missing argument: maxentModel");
-			if (outfilePath==null)
-				throw new RuntimeException("Missing argument: outfile");
+			
+			LOG.info("Evaluating test events...");
+			ZipInputStream zis = new ZipInputStream(new FileInputStream(maxentModelFilePath));
+			ZipEntry ze;
+		    while ((ze = zis.getNextEntry()) != null) {
+		    	if (ze.getName().endsWith(".bin"))
+		    		break;
+		    }
+		    MaxentModel model = new MaxentModelReader(zis).getModel();
+			zis.close();
+			
+			String csvFilePath = maxentModelFilePath + ".model.csv";
 			
 			MaxEntModelCSVWriter writer = new MaxEntModelCSVWriter();
-			writer.setMaxentModelFilePath(maxentModelFilePath);
-			writer.setCsvFilePath(outfilePath);
+			writer.setModel(model);
+			writer.setCsvFilePath(csvFilePath);
 			writer.setTop100(top100);
 			writer.writeCSVFile();
 		} else {
