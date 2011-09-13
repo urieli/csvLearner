@@ -1,4 +1,4 @@
-package com.joliciel.csvLearner.utils;
+package com.joliciel.csvLearner.features;
 
 import static org.junit.Assert.*;
 
@@ -10,15 +10,13 @@ import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 
 import com.joliciel.csvLearner.NameValuePair;
-import com.joliciel.csvLearner.utils.FeatureSplitter;
-import com.joliciel.csvLearner.utils.FeatureSplitter.StopConditionTest;
 
 public class FeatureSplitterTest {
 	private static final Log LOG = LogFactory.getLog(FeatureSplitterTest.class);
 
 	@Test
 	public void testSplit() {
-		FeatureSplitter splitter = new FeatureSplitter();
+		InformationGainSplitter splitter = new InformationGainSplitter();
 		splitter.setInformationGainThreshold(0.01);
 		
 		List<NameValuePair> weightedOutcomes = new Vector<NameValuePair>();
@@ -28,13 +26,14 @@ public class FeatureSplitterTest {
 		weightedOutcomes.add(new NameValuePair("A", 4));
 		weightedOutcomes.add(new NameValuePair("A", 4));
 		
-		int split = splitter.split(weightedOutcomes, 0, 4);
+		Split subset = new Split(weightedOutcomes, 0, 4);
+		int split = splitter.split(subset);
 		assertEquals(2, split);
 	}
 	
 	@Test
 	public void testSplitMultiple() {
-		FeatureSplitter splitter = new FeatureSplitter();
+		InformationGainSplitter splitter = new InformationGainSplitter();
 		splitter.setInformationGainThreshold(0.01);
 		List<NameValuePair> weightedOutcomes = new Vector<NameValuePair>();
 		weightedOutcomes.add(new NameValuePair("A", 1));
@@ -53,8 +52,7 @@ public class FeatureSplitterTest {
 	
 	@Test
 	public void testSplitMultipleFayyadAndIrani() {
-		FeatureSplitter splitter = new FeatureSplitter();
-		splitter.setStopConditionTest(StopConditionTest.FAYYAD_IRANI);
+		FeatureSplitter splitter = new FayyadIraniSplitter();
 		List<NameValuePair> weightedOutcomes = new Vector<NameValuePair>();
 		weightedOutcomes.add(new NameValuePair("A", 1));
 		weightedOutcomes.add(new NameValuePair("B", 2));

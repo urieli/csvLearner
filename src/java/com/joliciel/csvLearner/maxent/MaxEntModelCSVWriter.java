@@ -16,7 +16,7 @@
 //You should have received a copy of the GNU General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
-package com.joliciel.csvLearner.utils;
+package com.joliciel.csvLearner.maxent;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -33,6 +33,9 @@ import java.util.TreeSet;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.joliciel.csvLearner.utils.CSVFormatter;
+import com.joliciel.csvLearner.utils.LogUtils;
 
 import opennlp.model.Context;
 import opennlp.model.IndexHashTable;

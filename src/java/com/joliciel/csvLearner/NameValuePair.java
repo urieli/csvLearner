@@ -19,7 +19,7 @@
 package com.joliciel.csvLearner;
 
 /**
- * A name/value pair that orders automatically from biggest to smallest.
+ * A name/value pair that orders automatically in ascending order.
  * @author Assaf Urieli
  *
  */

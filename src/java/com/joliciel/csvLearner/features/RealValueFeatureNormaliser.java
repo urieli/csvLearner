@@ -16,7 +16,7 @@
 //You should have received a copy of the GNU General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
-package com.joliciel.csvLearner;
+package com.joliciel.csvLearner.features;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +25,11 @@ import java.util.Vector;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.joliciel.csvLearner.CSVEventListReader;
+import com.joliciel.csvLearner.CSVLearner;
+import com.joliciel.csvLearner.GenericEvent;
+import com.joliciel.csvLearner.GenericEvents;
 
 /**
  * Take a real-valued feature, and normalises it to a certain scale.

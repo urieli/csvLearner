@@ -47,6 +47,10 @@ public class GenericEvents implements Iterable<GenericEvent> {
 		return events.iterator();
 	}
 	
+	/**
+	 * Returns an ordered set of features.
+	 * @return
+	 */
 	public Set<String> getFeatures() {
 		if (features==null) {
 			features = new TreeSet<String>();
@@ -57,6 +61,10 @@ public class GenericEvents implements Iterable<GenericEvent> {
 		return features;
 	}
 	
+	/**
+	 * Returns an ordered set of outcomes.
+	 * @return
+	 */
 	public Set<String> getOutcomes() {
 		if (outcomes==null) {
 			outcomes = new TreeSet<String>();

@@ -30,6 +30,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.Vector;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -40,8 +41,8 @@ import com.joliciel.csvLearner.utils.CSVFormatter;
 import com.joliciel.csvLearner.utils.LogUtils;
 
 /**
- * Given a result file and a set of feature files, constructs a set of events to
- * be used for training and evaluation.
+ * Given a set of feature files and (optionally) a result file, constructs a set of events to
+ * be used for training and evaluation. The result file is only required for training.
  * 
  * @author Assaf Urieli
  * 
@@ -62,17 +63,21 @@ public class CSVEventListReader {
 	private Map<String, GenericEvent> eventMap = null;
 	private Map<String,Map<String,GenericEvent>> eventFileMap = null;
 	private Set<String> features = new TreeSet<String>();
-	private Map<String,Set<String>> featuresPerFile = new TreeMap<String, Set<String>>();
+	private Map<String,Set<String>> fileToFeatureMap = new TreeMap<String, Set<String>>();
+	private Map<String,String> featureToFileMap = new TreeMap<String, String>();
+	
 	private Set<String> groupedFiles = new TreeSet<String>();
 	private Collection<String> excludedOutcomes = null;
 	private Set<String> eventsToExclude = new TreeSet<String>();
+	private Collection<String> includedFeatures = null;
+	private Set<String> featuresToInclude = null;
+	
+	private boolean skipUnknownEvents = false;
 	
 	private boolean splitEventsByFile = false;
 	
 	private GenericEvents events = null;
 	private Map<String,GenericEvents> eventsPerFile = null;
-
-
 	
 	public enum TrainingSetType {
 		ALL_TRAINING, ALL_TEST, TEST_SEGMENT
@@ -222,10 +227,10 @@ public class CSVEventListReader {
 		boolean firstLine = true;
 		List<String> featureNames = null;
 		Scanner scanner = new Scanner(inputStream, "UTF-8");
-		Set<String> featureSet = featuresPerFile.get(fileName);
+		Set<String> featureSet = fileToFeatureMap.get(fileName);
 		if (featureSet==null) {
 			featureSet = new TreeSet<String>();
-			featuresPerFile.put(fileName, featureSet);
+			fileToFeatureMap.put(fileName, featureSet);
 		}
 		try {
 			int row = 1;
@@ -233,20 +238,20 @@ public class CSVEventListReader {
 				String line = scanner.nextLine();
 				List<String> cells = CSVFormatter.getCSVCells(line);
 				if (firstLine) {
-					featureNames = cells;
-					boolean firstColumn = true;
-					if (grouped) {
-						for (String featureName : featureNames) {
-							if (!firstColumn)
-								groupedFeatures.put(featureName, fileName);
-							if (firstColumn) firstColumn = false;
-						}
+					featureNames = new Vector<String>();
+					for (String cell : cells) {
+						featureNames.add(cell.replace(' ', '_'));
 					}
-					firstColumn = true;
+					featureNames = cells;
+					
+					boolean firstColumn = true;
 					for (String featureName : featureNames) {
 						if (!firstColumn) {
 							features.add(featureName);
 							featureSet.add(featureName);
+							if (grouped)
+								groupedFeatures.put(featureName, fileName);
+							featureToFileMap.put(featureName, fileName);
 						}
 						if (firstColumn) firstColumn = false;
 					}
@@ -273,8 +278,13 @@ public class CSVEventListReader {
 							event = currentEventMap.get(ref);
 							if (event == null) {
 								if (resultFilePath!=null) {
-									throw new RuntimeException(
-										"ID not found in result file: " + cell);
+									if (skipUnknownEvents) {
+										// unknown ID: skip this whole line
+										break;
+									} else {
+										throw new RuntimeException(
+											"ID not found in result file: " + cell);
+									}
 								} else {
 									event = new GenericEvent(ref);
 									event.setTest(true);
@@ -287,6 +297,10 @@ public class CSVEventListReader {
 							if (i>featureNames.size()-1)
 								throw new RuntimeException("File: " + fileName + ". Too many cells on row: " + row);
 							String featureName = featureNames.get(i);
+							if (this.featuresToInclude!=null && !this.featuresToInclude.contains(featureName)) {
+								i++;
+								continue;
+							}
 							float weight = 0;
 							try {
 								weight = Float.parseFloat(cell);
@@ -405,8 +419,16 @@ public class CSVEventListReader {
 	 * A map of file name to a set of feature names for all files.
 	 * @return
 	 */
-	public Map<String, Set<String>> getFeaturesPerFile() {
-		return featuresPerFile;
+	public Map<String, Set<String>> getFileToFeatureMap() {
+		return fileToFeatureMap;
+	}
+	
+	/**
+	 * A map of feature name to file name.
+	 * @return
+	 */
+	public Map<String, String> getFeatureToFileMap() {
+		return featureToFileMap;
 	}
 	
 	public float getMax(String featureName) {
@@ -418,7 +440,7 @@ public class CSVEventListReader {
 			Float maxValueObj = this.fileMaxValues.get(fileName);
 			if (maxValueObj==null) {
 				maxValue = 0;
-				for (String feature : this.featuresPerFile.get(fileName)) {
+				for (String feature : this.fileToFeatureMap.get(fileName)) {
 					float featureMax = this.featureStatsMap.get(feature).max;
 					if (featureMax>maxValue)
 						maxValue = featureMax;
@@ -444,7 +466,7 @@ public class CSVEventListReader {
 			if (meanValueObj==null) {
 				float totalValue = 0;
 				int totalCount = 0;
-				for (String feature : this.featuresPerFile.get(fileName)) {
+				for (String feature : this.fileToFeatureMap.get(fileName)) {
 					totalValue += this.featureStatsMap.get(feature).total;
 					totalCount += this.featureStatsMap.get(feature).count;
 				}
@@ -473,7 +495,10 @@ public class CSVEventListReader {
 		return this.events;
 	}
 	
-	
+	/**
+	 * The events found by this reader in each separate file.
+	 * @return
+	 */
 	public Map<String, GenericEvents> getEventsPerFile() {
 		if (eventsPerFile == null) {
 			eventsPerFile = new TreeMap<String, GenericEvents>();
@@ -519,6 +544,27 @@ public class CSVEventListReader {
 	}
 
 	/**
+	 * If not null, only features in this collection will be included.
+	 * @return
+	 */
+	public Collection<String> getIncludedFeatures() {
+		return includedFeatures;
+	}
+
+	public void setIncludedFeatures(Collection<String> includedFeatures) {
+		this.includedFeatures = includedFeatures;
+		this.featuresToInclude = new TreeSet<String>();
+		for (String includedFeature : includedFeatures) {
+			int nominalMarkerPos = includedFeature.indexOf(CSVLearner.NOMINAL_MARKER);
+			if (nominalMarkerPos>=0) {
+				this.featuresToInclude.add(includedFeature.substring(0,nominalMarkerPos));
+			} else {
+				this.featuresToInclude.add(includedFeature);
+			}
+		}
+	}
+
+	/**
 	 * If true, events will be split out for each file.
 	 * @return
 	 */
@@ -528,6 +574,19 @@ public class CSVEventListReader {
 
 	public void setSplitEventsByFile(boolean splitEventsByFile) {
 		this.splitEventsByFile = splitEventsByFile;
+	}
+
+	/**
+	 * If true, any event with an unknown ID (that is, and ID which doesn't exist in the results file)
+	 * will be skipped.
+	 * If false, these events will throw an exception.
+	 */
+	public boolean isSkipUnknownEvents() {
+		return skipUnknownEvents;
+	}
+
+	public void setSkipUnknownEvents(boolean skipUnknownEvents) {
+		this.skipUnknownEvents = skipUnknownEvents;
 	}
 
 

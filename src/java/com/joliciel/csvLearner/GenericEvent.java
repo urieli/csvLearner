@@ -19,6 +19,8 @@
 package com.joliciel.csvLearner;
 
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.Vector;
 
 /**
@@ -29,6 +31,9 @@ import java.util.Vector;
 public class GenericEvent {
 	private List<String> features = new Vector<String>();
 	private List<Float> weights = new Vector<Float>();
+	private Map<String,Integer> featureIndex = new TreeMap<String, Integer>();
+	private int currentIndex = 0;
+	
 	private String outcome = "";
 	private String identifier = "";
 	private boolean test;
@@ -37,16 +42,20 @@ public class GenericEvent {
 		this.identifier = identifier;
 	}
 	public int getFeatureIndex(String feature) {
-		return this.features.indexOf(feature);
+		Integer featureIndexObj = this.featureIndex.get(feature);
+		int i = featureIndexObj==null ? -1 : featureIndexObj.intValue();
+		return i;
 	}
 	
 	public void addFeature(String feature, float weight) {
 		this.features.add(feature);
+		this.featureIndex.put(feature, currentIndex++);
 		this.weights.add(weight);
 	}
 	
 	public void addFeature(String feature) {
 		this.features.add(feature);
+		this.featureIndex.put(feature, currentIndex++);
 		this.weights.add(new Float(1));
 	}
 	

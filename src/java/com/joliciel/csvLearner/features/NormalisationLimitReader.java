@@ -16,7 +16,7 @@
 //You should have received a copy of the GNU General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
-package com.joliciel.csvLearner;
+package com.joliciel.csvLearner.features;
 
 import java.io.File;
 import java.io.FileInputStream;

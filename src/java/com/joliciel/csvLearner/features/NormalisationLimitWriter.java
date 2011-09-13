@@ -16,7 +16,7 @@
 //You should have received a copy of the GNU General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
-package com.joliciel.csvLearner;
+package com.joliciel.csvLearner.features;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -26,49 +26,37 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-
 import com.joliciel.csvLearner.utils.CSVFormatter;
 
-public class FeatureDiscreteLimitWriter {
+public class NormalisationLimitWriter {
+	private File file;
 	private Writer writer;
 	
-	public FeatureDiscreteLimitWriter(File file) {
-		try {
-			file.delete();
-			file.createNewFile();
-			this.writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, false),"UTF8"));
-		} catch (IOException ioe) {
-			throw new RuntimeException(ioe);
-		}
+	public NormalisationLimitWriter(File file) {
+		this.file = file;
 	}
-	public FeatureDiscreteLimitWriter(Writer writer) {
+
+	public NormalisationLimitWriter(Writer writer) {
 		this.writer = writer;
 	}
 	
-	public void writeFile(Map<String,Set<Double>> discretizationLimits) {
+	public void writeFile(Map<String,Float> normalisationLimits) {
 		try {
-			try {
-				int maxLimitCount = 0;
-				for (Set<Double> limits: discretizationLimits.values()) {
-					if (limits.size()>maxLimitCount)
-						maxLimitCount = limits.size();
-				}
-				writer.append("feature,");
+			if (this.file!=null) {
+				file.delete();
+				file.createNewFile();
+				this.writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file, false),"UTF8"));
+			}
 
-				for (int i = 0;i<=maxLimitCount;i++) {
-					writer.append("c"+ i +",");
-				}
+			try {
+				writer.append("feature,max,");
 				
 				writer.append("\n");
 				writer.flush();
 				
-				for (Entry<String,Set<Double>> discretizationLimit: discretizationLimits.entrySet()) {
-					writer.append(CSVFormatter.format(discretizationLimit.getKey())+",");
-					for (double limit : discretizationLimit.getValue()) {
-						writer.append(CSVFormatter.format(limit)+",");
-					}
-					writer.append("infinity,");
+				for (Entry<String,Float> normalisationLimit: normalisationLimits.entrySet()) {
+					writer.append(CSVFormatter.format(normalisationLimit.getKey())+",");
+					writer.append(CSVFormatter.format(normalisationLimit.getValue())+",");
 					writer.append("\n");
 					writer.flush();
 				}

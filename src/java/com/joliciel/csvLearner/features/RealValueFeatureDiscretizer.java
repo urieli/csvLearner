@@ -16,7 +16,7 @@
 //You should have received a copy of the GNU General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
-package com.joliciel.csvLearner;
+package com.joliciel.csvLearner.features;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,8 +27,10 @@ import java.util.Vector;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.joliciel.csvLearner.utils.FeatureSplitter;
-import com.joliciel.csvLearner.utils.FeatureSplitter.StopConditionTest;
+import com.joliciel.csvLearner.CSVLearner;
+import com.joliciel.csvLearner.GenericEvent;
+import com.joliciel.csvLearner.GenericEvents;
+import com.joliciel.csvLearner.NameValuePair;
 
 /**
  * Take a real-valued feature, and converts it to a set of (binary) classifying features
@@ -38,12 +40,8 @@ import com.joliciel.csvLearner.utils.FeatureSplitter.StopConditionTest;
  */
 public class RealValueFeatureDiscretizer {
 	private static final Log LOG = LogFactory.getLog(RealValueFeatureDiscretizer.class);
-
-	private int minNodeSize = 1;
-	private double informationGainThreshold = 0;
-	private int maxDepth = -1;
-	private double minErrorRate = -1;
-	private StopConditionTest stopConditionTest = StopConditionTest.INFORMATION_GAIN_PERCENT;
+	
+	private FeatureSplitter featureSplitter = null;
 
 	/**
 	 * Transform a given real-valued feature into a set of discrete features, each with a separate class name.
@@ -98,13 +96,8 @@ public class RealValueFeatureDiscretizer {
 			}
 		}
 		List<NameValuePair> featureValueList = new Vector<NameValuePair>(featureValues);
-		FeatureSplitter splitter = new FeatureSplitter();
-		splitter.setStopConditionTest(stopConditionTest);
-		splitter.setInformationGainThreshold(informationGainThreshold);
-		splitter.setMinNodeSize(minNodeSize);
-		splitter.setMinErrorRate(minErrorRate);
-		splitter.setMaxDepth(maxDepth);
-		List<Integer> splits = splitter.split(featureValueList);
+
+		List<Integer> splits = featureSplitter.split(featureValueList);
 		Set<Double> splitValues = new TreeSet<Double>();
 		for (int split : splits) {
 			NameValuePair before = featureValueList.get(split);
@@ -116,45 +109,14 @@ public class RealValueFeatureDiscretizer {
 		return splitValues;
 	}
 
-	public int getMinNodeSize() {
-		return minNodeSize;
+	public FeatureSplitter getFeatureSplitter() {
+		return featureSplitter;
 	}
 
-	public void setMinNodeSize(int minNodeSize) {
-		this.minNodeSize = minNodeSize;
+	public void setFeatureSplitter(FeatureSplitter featureSplitter) {
+		this.featureSplitter = featureSplitter;
 	}
 
-	public double getInformationGainThreshold() {
-		return informationGainThreshold;
-	}
-
-	public void setInformationGainThreshold(double informationGainThreshold) {
-		this.informationGainThreshold = informationGainThreshold;
-	}
-
-	public int getMaxDepth() {
-		return maxDepth;
-	}
-
-	public void setMaxDepth(int maxDepth) {
-		this.maxDepth = maxDepth;
-	}
-
-	public double getMinErrorRate() {
-		return minErrorRate;
-	}
-
-	public void setMinErrorRate(double minErrorRate) {
-		this.minErrorRate = minErrorRate;
-	}
-
-	public StopConditionTest getStopConditionTest() {
-		return stopConditionTest;
-	}
-
-	public void setStopConditionTest(StopConditionTest stopConditionTest) {
-		this.stopConditionTest = stopConditionTest;
-	}
 	
 	
 }
