@@ -127,6 +127,7 @@ public class CSVLearner {
 	boolean skipUnknownEvents = false;
 	int featureCount=100;
 	String featureFilePath = null;
+	boolean denominalise = false;
 	
 	public static final String NOMINAL_MARKER = ":::";
 	
@@ -257,6 +258,8 @@ public class CSVLearner {
 				combinedName = argValue;
 			} else if (argName.equals("skipUnknownEvents")) {
 				skipUnknownEvents = argValue.equals("true");
+			} else if (argName.equals("denominalise")) {
+				denominalise = argValue.equals("true");
 			} else if (argName.equals("featureCount")) {
 				featureCount = Integer.parseInt(argValue);
 			} else if (argName.equals("featureFile")) {
@@ -466,17 +469,6 @@ public class CSVLearner {
 			}
 			
 			if (bestFeatureObserver!=null) {
-				File topFeaturesFile = new File(outfilePath + ".topFeatures.csv");
-				topFeaturesFile.delete();
-				topFeaturesFile.createNewFile();
-				Writer topFeaturesWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(topFeaturesFile, false),"UTF8"));
-				try {
-					bestFeatureObserver.writeToFile(topFeaturesWriter);
-				} finally {
-					topFeaturesWriter.flush();
-					topFeaturesWriter.close();
-				}					
-
 				File weightPerFileFile = new File(outfilePath + ".weightPerFile.csv");
 				weightPerFileFile.delete();
 				weightPerFileFile.createNewFile();
@@ -488,6 +480,7 @@ public class CSVLearner {
 					weightPerFileWriter.close();
 				}					
 			
+				LOG.debug("Total feature count: " + reader.getFeatures().size());
 			}
 		} catch (IOException ioe) {
 			LogUtils.logError(LOG, ioe);
@@ -507,7 +500,7 @@ public class CSVLearner {
 		if (outDir==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdir();
+		new File(outDir).mkdirs();
 		
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, true);
 		
@@ -585,7 +578,7 @@ public class CSVLearner {
 		if (outDir==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdir();
+		new File(outDir).mkdirs();
 		
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, true);
 		
@@ -627,7 +620,7 @@ public class CSVLearner {
 		if (outDir==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdir();
+		new File(outDir).mkdirs();
 		
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, true);
 		
@@ -664,7 +657,7 @@ public class CSVLearner {
 		if (maxDepth<=0)
 			throw new RuntimeException("Missing argument: maxDepth");
 		
-		new File(outDir).mkdir();
+		new File(outDir).mkdirs();
 					
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, false);
 		
@@ -723,7 +716,7 @@ public class CSVLearner {
 		if (outDir==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdir();
+		new File(outDir).mkdirs();
 		
 		
 		if (singleFile!=null) {
@@ -738,6 +731,7 @@ public class CSVLearner {
 				eventListWriter.setMissingValueString(missingValueString);
 			if (identifierPrefix!=null)
 				eventListWriter.setIdentifierPrefix(identifierPrefix);
+			eventListWriter.setDenominalise(denominalise);
 			eventListWriter.setIncludeOutcomes(includeOutcomes);
 			eventListWriter.writeFile(events);
 		} else {

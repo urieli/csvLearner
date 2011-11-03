@@ -36,6 +36,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.joliciel.csvLearner.utils.CSVFormatter;
 import com.joliciel.csvLearner.utils.LogUtils;
+import com.joliciel.csvLearner.utils.StringComparatorIgnoreCase;
 
 import opennlp.model.Context;
 import opennlp.model.IndexHashTable;
@@ -61,6 +62,7 @@ public class MaxEntModelCSVWriter {
 			String[] outcomeNames = (String[]) dataStructures[2];
 			String[] predicates = new String[predicateTable.size()];
 			predicateTable.toArray(predicates);
+			
 			Writer csvFileWriter = null;
 			
 			if (csvFilePath!=null&&csvFilePath.length()>0) {
@@ -77,7 +79,7 @@ public class MaxEntModelCSVWriter {
 						outcomeMap.put(outcomeName, i);
 					}
 					for (String outcome : outcomeMap.keySet()) {
-						csvFileWriter.write(outcome + ",,");
+						csvFileWriter.write(CSVFormatter.format(outcome) + ",,");
 					}
 					csvFileWriter.write("\n");
 					
@@ -119,23 +121,25 @@ public class MaxEntModelCSVWriter {
 								if (param==null)
 									csvFileWriter.write(",,");
 								else
-									csvFileWriter.write("\"" + param.getPredicate() + "\"," + CSVFormatter.format(param.getValue()) + ",");
+									csvFileWriter.write("\"" + CSVFormatter.format(param.getPredicate()) + "\"," + CSVFormatter.format(param.getValue()) + ",");
 							}
 						}
 						csvFileWriter.write("\n");
 					}
 				} else {
+					Set<String> predicateSet = new TreeSet<String>(new StringComparatorIgnoreCase());
+					for (String predicate : predicates)
+						predicateSet.add(predicate);
 					csvFileWriter.write("predicate,");
 					for (String outcomeName : outcomeNames) {
 						csvFileWriter.write(outcomeName + ",");
 					}
 					csvFileWriter.write("\n");
 					
-					int i = 0;
-					for (String predicate : predicates) {
+					for (String predicate : predicateSet) {
 						csvFileWriter.write(CSVFormatter.format(predicate) + ",");
-	
-						Context context = modelParameters[i];
+						int predicateIndex = predicateTable.get(predicate);
+						Context context = modelParameters[predicateIndex];
 						int[] outcomeIndexes = context.getOutcomes();
 						double[] parameters = context.getParameters();
 						for (int j=0;j<outcomeNames.length;j++) {
@@ -146,13 +150,14 @@ public class MaxEntModelCSVWriter {
 									break;
 								}
 							}
-							double value = 0.0;
-							if (paramIndex>=0)
-								value = parameters[paramIndex];
-							csvFileWriter.write(CSVFormatter.format(value) + ",");
+							if (paramIndex>=0) {
+								double value = parameters[paramIndex];
+								csvFileWriter.write(CSVFormatter.format(Math.exp(value)) + ",");
+							} else {
+								csvFileWriter.write(CSVFormatter.format(0) + ",");
+							}
 						}
 						csvFileWriter.write("\n");
-						i++;
 					}
 				}
 			} finally {

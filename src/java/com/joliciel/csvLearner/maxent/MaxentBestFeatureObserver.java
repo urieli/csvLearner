@@ -45,7 +45,9 @@ import com.joliciel.csvLearner.NameValuePair;
 import com.joliciel.csvLearner.utils.CSVFormatter;
 
 /**
- * Calculate the n most significant features for each outcome.
+ * Calculate feature weight per outcome during analysis.
+ * Note that this weight is fairly meaningless on an individual feature basis.
+ * However, for an entire file, it can give an idea of the weight of that file in the overall calculation.
  * @author Assaf Urieli
  *
  */
@@ -198,32 +200,13 @@ public class MaxentBestFeatureObserver implements MaxentObserver {
 		return bestFeaturesPerOutcome;
 	}
 	
-	public void writeToFile(Writer writer) {
-		try {
-			writer.append("outcome,");
-			writer.append(CSVFormatter.format("top " + n + " weight") + ",");
-			for (int i = 1; i<=n; i++) {
-				writer.append(CSVFormatter.format(i) + ",");
-				writer.append(CSVFormatter.format("weight") + ",");
-			}
-			writer.append("\n");
-			for (String outcome : bestFeaturesPerOutcome.keySet()) {
-				writer.append(CSVFormatter.format(outcome) + ",");
-				writer.append(CSVFormatter.format((bestFeatureTotalPerOutcome.get(outcome)/totalPerOutcome.get(outcome)))+ ",");
-				for (NameValuePair pair : bestFeaturesPerOutcome.get(outcome)) {
-					writer.append(CSVFormatter.format(pair.getName()) + ",");
-					writer.append(CSVFormatter.format((pair.getValue()/totalPerOutcome.get(outcome))) + ",");
-				}
-				writer.append("\n");
-			}			
-		} catch (IOException ioe) {
-			throw new RuntimeException(ioe);
-		}
-	}
-	
 	public void writeFileTotalsToFile(Writer writer) {
 		try {
 			boolean firstOutcome = true;
+			Map<String,Double> totalPerFile = new HashMap<String, Double>();
+			for (String fileName : fileNames)
+				totalPerFile.put(fileName, 0.0);
+			
 			for (String outcome : filePercentagePerOutcome.keySet()) {
 				if (firstOutcome) {
 					writer.append("outcome,");
@@ -235,11 +218,20 @@ public class MaxentBestFeatureObserver implements MaxentObserver {
 				for (String fileName : fileNames) {
 					Double filePercentageObj = filePercentagePerOutcome.get(outcome).get(fileName);
 					double filePercentage = filePercentageObj==null ? 0 : filePercentageObj.doubleValue();
+					double currentTotal = totalPerFile.get(fileName);
+					totalPerFile.put(fileName, currentTotal + filePercentage);
 					writer.append(CSVFormatter.format(filePercentage) + ",");
 				}
 				writer.append("\n");
 				firstOutcome = false;
+			}
+			
+			writer.append(CSVFormatter.format("AVERAGE") + ",");
+			for (String fileName : fileNames) {
+				double total = totalPerFile.get(fileName);
+				writer.append(CSVFormatter.format(total/filePercentagePerOutcome.size()) + ",");
 			}			
+			writer.append("\n");
 		} catch (IOException ioe) {
 			throw new RuntimeException(ioe);
 		}

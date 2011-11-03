@@ -49,14 +49,16 @@ public class GenericEvent {
 	
 	public void addFeature(String feature, float weight) {
 		this.features.add(feature);
+		// add the feature's base name if it's a nominal feature
+		int nominalStartIndex = feature.indexOf(CSVLearner.NOMINAL_MARKER);
+		if (nominalStartIndex>=0)
+			this.featureIndex.put(feature.substring(0, nominalStartIndex), currentIndex);
 		this.featureIndex.put(feature, currentIndex++);
 		this.weights.add(weight);
 	}
 	
 	public void addFeature(String feature) {
-		this.features.add(feature);
-		this.featureIndex.put(feature, currentIndex++);
-		this.weights.add(new Float(1));
+		this.addFeature(feature, 1);
 	}
 	
 	public List<String> getFeatures() {

@@ -240,9 +240,11 @@ public class CSVEventListReader {
 				if (firstLine) {
 					featureNames = new Vector<String>();
 					for (String cell : cells) {
-						featureNames.add(cell.replace(' ', '_'));
+						String featureName = cell.replace(' ', '_');
+						featureName = featureName.replace(",", "$comma$");
+						featureName = featureName.replace("\"", "$double_quote$");
+						featureNames.add(featureName);
 					}
-					featureNames = cells;
 					
 					boolean firstColumn = true;
 					for (String featureName : featureNames) {
@@ -441,7 +443,10 @@ public class CSVEventListReader {
 			if (maxValueObj==null) {
 				maxValue = 0;
 				for (String feature : this.fileToFeatureMap.get(fileName)) {
-					float featureMax = this.featureStatsMap.get(feature).max;
+					float featureMax = 0;
+					FeatureStats featureStats = this.featureStatsMap.get(feature);
+					if (featureStats!=null)
+						featureMax = featureStats.max;
 					if (featureMax>maxValue)
 						maxValue = featureMax;
 				}

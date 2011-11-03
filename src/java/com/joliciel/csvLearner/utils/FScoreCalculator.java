@@ -424,6 +424,9 @@ public class FScoreCalculator<E> {
 			DecimalFormat df = (DecimalFormat) DecimalFormat.getNumberInstance(Locale.US);
 			df.applyPattern("#.##");
 			
+			double totalPrecisionSum = 0;
+			double totalRecallSum = 0;
+			double totalFscoreSum = 0;
 			for (E outcome : outcomeSet) {
 				fscoreFileWriter.write(outcome.toString() + ",");
 				for (E outcome2 : outcomeSet) {
@@ -440,7 +443,11 @@ public class FScoreCalculator<E> {
 				fscoreFileWriter.write(df.format(this.getPrecision(outcome)*100)+",");
 				fscoreFileWriter.write(df.format(this.getRecall(outcome)*100)+",");
 				fscoreFileWriter.write(df.format(this.getFScore(outcome)*100)+",");
-				fscoreFileWriter.write("\n");						
+				fscoreFileWriter.write("\n");
+				
+				totalPrecisionSum += this.getPrecision(outcome);
+				totalRecallSum += this.getRecall(outcome);
+				totalFscoreSum += this.getFScore(outcome);
 			}
 			
 			fscoreFileWriter.write("TOTAL,");
@@ -454,6 +461,19 @@ public class FScoreCalculator<E> {
 			fscoreFileWriter.write(df.format(this.getTotalPrecision()*100)+",");
 			fscoreFileWriter.write(df.format(this.getTotalRecall()*100)+",");
 			fscoreFileWriter.write(df.format(this.getTotalFScore()*100)+",");
+			fscoreFileWriter.write("\n");
+			
+			fscoreFileWriter.write("AVERAGE,");
+			for (E outcome : outcomeSet) {
+				outcome.hashCode();
+				fscoreFileWriter.write(",");
+			}
+			fscoreFileWriter.write(",");
+			fscoreFileWriter.write(",");
+			fscoreFileWriter.write(",");
+			fscoreFileWriter.write(df.format((totalPrecisionSum/outcomeSet.size())*100)+",");
+			fscoreFileWriter.write(df.format((totalRecallSum/outcomeSet.size())*100)+",");
+			fscoreFileWriter.write(df.format((totalFscoreSum/outcomeSet.size())*100)+",");
 			fscoreFileWriter.write("\n");
 		} catch (IOException ioe) {
 			throw new RuntimeException(ioe);

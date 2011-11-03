@@ -47,6 +47,7 @@ public class CSVEventListWriter {
 	boolean includeOutcomes = false;
 	String missingValueString="";
 	String identifierPrefix = "";
+	boolean denominalise = false;
 	
 	File file = null;
 	
@@ -81,7 +82,7 @@ public class CSVEventListWriter {
 							LOG.trace("Writing event: " + event.getIdentifier());
 						for (String feature : event.getFeatures()) {
 							int classIndex = feature.indexOf(CSVLearner.NOMINAL_MARKER);
-							if (classIndex<0)
+							if (classIndex<0||denominalise)
 								features.add(feature);
 							else
 								features.add(feature.substring(0, classIndex));
@@ -105,7 +106,7 @@ public class CSVEventListWriter {
 						features = new TreeSet<String>();
 						for (String feature : event.getFeatures()) {
 							int classIndex = feature.indexOf(CSVLearner.NOMINAL_MARKER);
-							if (classIndex<0)
+							if (classIndex<0||denominalise)
 								features.add(feature);
 							else
 								features.add(feature.substring(0, classIndex));
@@ -129,29 +130,21 @@ public class CSVEventListWriter {
 						writer.append(CSVFormatter.format(event.getOutcome())+ ",");
 					
 					for (String feature : features) {
-						int featureIndex = -1;
-						String eventFeature = null;
-						for (int i=0;i<event.getFeatures().size();i++) {
-							eventFeature = event.getFeatures().get(i);
-							String eventFeatureStart = eventFeature;
-							int classIndex = eventFeature.indexOf(CSVLearner.NOMINAL_MARKER);
-							if (classIndex>=0)
-								eventFeatureStart=eventFeature.substring(0, classIndex);
-							
-							if (eventFeatureStart.equals(feature)) {
-								featureIndex = i;
-								break;
-							}
-						}
+						Integer featureIndexObj = event.getFeatureIndex(feature);
+						int featureIndex = featureIndexObj==null ? -1 : featureIndexObj.intValue();
+
 						if (featureIndex<0) {
 							writer.append(missingValueString + ",");
-						} else if (!eventFeature.equals(feature)) {
-							int classIndex = eventFeature.indexOf(CSVLearner.NOMINAL_MARKER);
-							String clazz = eventFeature.substring(classIndex+CSVLearner.NOMINAL_MARKER.length());
-							writer.append(CSVFormatter.format(clazz)+",");
 						} else {
-							double value = event.getWeights().get(featureIndex);
-							writer.append(CSVFormatter.format(value)+",");
+							String eventFeature = event.getFeatures().get(featureIndex);
+							if (!eventFeature.equals(feature)) {
+								int classIndex = eventFeature.indexOf(CSVLearner.NOMINAL_MARKER);
+								String clazz = eventFeature.substring(classIndex+CSVLearner.NOMINAL_MARKER.length());
+								writer.append(CSVFormatter.format(clazz)+",");
+							} else {
+								double value = event.getWeights().get(featureIndex);
+								writer.append(CSVFormatter.format(value)+",");
+							}
 						}
 					}
 					writer.append("\n");
@@ -225,6 +218,19 @@ public class CSVEventListWriter {
 
 	public void setIdentifierPrefix(String identifierPrefix) {
 		this.identifierPrefix = identifierPrefix;
+	}
+
+	/**
+	 * Whether or not nominal features should be converted to numeric features
+	 * when writing.
+	 * @return
+	 */
+	public boolean isDenominalise() {
+		return denominalise;
+	}
+
+	public void setDenominalise(boolean denominalise) {
+		this.denominalise = denominalise;
 	}
 	
 	
