@@ -53,7 +53,7 @@ public class CSVEventListReader {
 	private String featureDirPath = null;
 	private String groupedFeatureDirPath = null;
 	private int testSegment = -1;
-	private TrainingSetType trainingSetType = TrainingSetType.TEST_SEGMENT;
+	private TrainingSetType trainingSetType = TrainingSetType.ALL_TRAINING;
 	
 	private Map<String, FeatureStats> featureStatsMap = new TreeMap<String, CSVEventListReader.FeatureStats>();
 	private Map<String, String> groupedFeatures = new TreeMap<String,String>();
@@ -67,10 +67,12 @@ public class CSVEventListReader {
 	private Map<String,String> featureToFileMap = new TreeMap<String, String>();
 	
 	private Set<String> groupedFiles = new TreeSet<String>();
+	private Collection<String> includedOutcomes = null;
 	private Collection<String> excludedOutcomes = null;
 	private Set<String> eventsToExclude = new TreeSet<String>();
 	private Collection<String> includedFeatures = null;
 	private Set<String> featuresToInclude = null;
+	private Set<String> outcomes = new TreeSet<String>();
 	
 	private boolean skipUnknownEvents = false;
 	
@@ -119,17 +121,20 @@ public class CSVEventListReader {
 					if (!firstLine) {
 						List<String> cells = CSVFormatter.getCSVCells(line);
 						String ref = cells.get(0);
-						int slashIndex = ref.indexOf('/');
-						if (slashIndex >= 0)
-							ref = ref.substring(slashIndex + 1);
-						int dotIndex = ref.indexOf('.');
-						if (dotIndex >= 0)
-							ref = ref.substring(0, dotIndex);
+
 						String outcome = cells.get(1);
-						if (excludedOutcomes!=null && excludedOutcomes.contains(outcome)) {
-							this.eventsToExclude.add(ref);
-						} else {
+						boolean includeEvent = true;
+						if (includedOutcomes!=null) {
+							if (!includedOutcomes.contains(outcome))
+								includeEvent = false;
+						} else if (excludedOutcomes!=null) {
+							if (excludedOutcomes.contains(outcome))
+								includeEvent = false;
+						}
+						
+						if (includeEvent) {
 							GenericEvent event = new GenericEvent(ref);
+							outcomes.add(outcome);
 							event.setOutcome(outcome);
 							if (trainingSetType.equals(TrainingSetType.ALL_TRAINING))
 								event.setTest(false);
@@ -141,6 +146,8 @@ public class CSVEventListReader {
 								throw new RuntimeException("Unknown TrainingSetType: " + trainingSetType);
 							eventMap.put(ref, event);
 							i++;
+						} else {
+							eventsToExclude.add(ref);
 						}
 					}
 					firstLine = false;
@@ -188,7 +195,7 @@ public class CSVEventListReader {
 				InputStream inputStream = null;
 				try {
 					if (fileName.endsWith(".dsc_limits.csv")||fileName.endsWith(".nrm_limits.csv")){
-						LOG.debug("Ignoring limits file: " + fileName);
+						LOG.trace("Ignoring limits file: " + fileName);
 					} else if (fileName.endsWith(".csv")) {
 						inputStream = new FileInputStream(file);
 						this.scanCSVFile(inputStream, true, grouped, fileName, currentEventMap);
@@ -266,14 +273,8 @@ public class CSVEventListReader {
 					for (String cell : cells) {
 						if (firstCell) {
 							String ref = cell;
-							int slashIndex = ref.indexOf('/');
-							if (slashIndex >= 0)
-								ref = ref.substring(slashIndex + 1);
-							int dotIndex = ref.indexOf('.');
-							if (dotIndex >= 0)
-								ref = ref.substring(0, dotIndex);
 							
-							if (this.eventsToExclude.size()>0 && this.eventsToExclude.contains(ref)) {
+							if (this.eventsToExclude.contains(ref)) {
 								// skip this whole line
 								break;
 							}
@@ -547,6 +548,18 @@ public class CSVEventListReader {
 	public void setExcludedOutcomes(Collection<String> excludedOutcomes) {
 		this.excludedOutcomes = excludedOutcomes;
 	}
+	
+	/**
+	 * Only events with an outcome in includedOutcomes will be included.
+	 * @return
+	 */
+	public Collection<String> getIncludedOutcomes() {
+		return includedOutcomes;
+	}
+
+	public void setIncludedOutcomes(Collection<String> includedOutcomes) {
+		this.includedOutcomes = includedOutcomes;
+	}
 
 	/**
 	 * If not null, only features in this collection will be included.
@@ -593,6 +606,16 @@ public class CSVEventListReader {
 	public void setSkipUnknownEvents(boolean skipUnknownEvents) {
 		this.skipUnknownEvents = skipUnknownEvents;
 	}
+
+	/**
+	 * The outcomes found in the provided result file.
+	 * @return
+	 */
+	public Set<String> getOutcomes() {
+		return outcomes;
+	}
+
+
 
 
 	

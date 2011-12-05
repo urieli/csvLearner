@@ -95,7 +95,7 @@ public class CSVLearner {
 	String maxentModelFilePath = null;
 	String maxentModelBaseName = null;
 	String outfilePath = null;
-	String outDir = null;
+	String outDirPath = null;
 	FeatureSplitterType splitterType = FeatureSplitterType.REGULAR_INTERVALS;
 	boolean generateEventFile = false;
 	boolean generateDetailFile = false;
@@ -120,6 +120,7 @@ public class CSVLearner {
 	double bias = 0.0;
 	boolean crossValidation=false;
 	Collection<String> excludedOutcomes = null;
+	Collection<String> includedOutcomes = null;
 	Collection<String> combineFiles = null;
 	String combinedName = "";
 	double minProbToConsider = 0.0;
@@ -127,7 +128,9 @@ public class CSVLearner {
 	boolean skipUnknownEvents = false;
 	int featureCount=100;
 	String featureFilePath = null;
+	String desiredCountFilePath = null;
 	boolean denominalise = false;
+	boolean balanceOutcomes = false;
 	
 	public static final String NOMINAL_MARKER = ":::";
 	
@@ -165,7 +168,7 @@ public class CSVLearner {
 				if (!featureDirFile.exists())
 					throw new RuntimeException("Cannot find featureDir directory: " + featureDir);
 			} else if (argName.equals("outDir")) 
-				outDir = argValue;
+				outDirPath = argValue;
 			else if (argName.equals("groupedFeatureDir")) {
 				groupedFeatureDir = argValue;
 				File groupedFeatureDirFile = new File(groupedFeatureDir);
@@ -248,6 +251,12 @@ public class CSVLearner {
 				excludedOutcomes = new TreeSet<String>();
 				for (String outcome : outcomeList)
 					excludedOutcomes.add(outcome);
+			} else if (argName.equals("includedOutcomes")) {
+				String[] outcomeList = argValue.split(",");
+				
+				includedOutcomes = new TreeSet<String>();
+				for (String outcome : outcomeList)
+					includedOutcomes.add(outcome);
 			} else if (argName.equals("combineFiles")) {
 				String[] fileList = argValue.split(",");
 				
@@ -264,6 +273,10 @@ public class CSVLearner {
 				featureCount = Integer.parseInt(argValue);
 			} else if (argName.equals("featureFile")) {
 				featureFilePath = argValue;
+			} else if (argName.equals("desiredCountFile")) {
+				desiredCountFilePath = argValue;
+			} else if (argName.equals("balanceOutcomes")) {
+				balanceOutcomes = argValue.equals("true");
 			}
 			else
 				throw new RuntimeException("Unknown argument: " + argName);
@@ -300,6 +313,8 @@ public class CSVLearner {
 			this.doCommandCopy();
 		} else if (command.equals("writeModelToCSV")) {
 			this.doCommandWriteModelToCSV();
+		} else if (command.equals("generateCombination")) {
+			this.doCommandGenerateCombination();
 		} else {
 			throw new RuntimeException("Unknown command: " + command);
 		}
@@ -307,12 +322,46 @@ public class CSVLearner {
 		LOG.debug("Total runtime: " + ((double)endTime / 1000) + " seconds");
 	}
 	
+	private void doCommandGenerateCombination() {
+		if (resultFilePath==null)
+			throw new RuntimeException("Missing argument: resultFile");
+		if (desiredCountFilePath==null)
+			throw new RuntimeException("Missing argument: desiredCountFile");
+		if (outDirPath==null)
+			throw new RuntimeException("Missing argument: outDir");
+		
+		File outDir = new File(outDirPath);
+		outDir.mkdirs();
+		
+		EventCombinationGenerator generator = new EventCombinationGenerator();
+		generator.setResultFilePath(resultFilePath);
+		File desiredCountFile = new File(desiredCountFilePath);
+		generator.readDesiredCounts(desiredCountFile);
+		
+		File outFile = null;
+		String suffix = "";
+		for (Entry<String,Integer> entry : generator.getDesiredCountPerOutcome().entrySet()) {
+			suffix += "_" + entry.getValue();
+		}
+		int i = 1;
+		String fileNameBase = resultFilePath.substring(resultFilePath.lastIndexOf('/')+1, resultFilePath.lastIndexOf('.'));
+		while (outFile==null) {
+			String fileName = fileNameBase + suffix + "_" + i + ".csv";
+			outFile = new File(outDir, fileName);
+			if (outFile.exists())
+				outFile = null;
+			i++;
+		}
+		generator.getCombination();
+		generator.writeCombination(outFile);
+	}
+
 	private void doCommandEvaluate() throws IOException {
 		if (resultFilePath==null)
 			throw new RuntimeException("Missing argument: resultFile");
 		if (featureDir==null)
 			throw new RuntimeException("Missing argument: featureDir");
-		if (maxentModelFilePath==null)
+		if (maxentModelFilePath==null && !crossValidation)
 			throw new RuntimeException("Missing argument: maxentModel");
 		if (!crossValidation) {
 			if (testSegment<0)
@@ -345,23 +394,94 @@ public class CSVLearner {
 			zos.flush();
 			zos.close();
 			
-			this.evaluate(maxentModel, events);
+			this.evaluate(maxentModel, events, null);
 		} else {
-			Mean accuracyMean = new Mean();
-			StandardDeviation accuracyStdDev = new StandardDeviation();
-			for (int segment = 0; segment<=9; segment++) {
-				int i = 0;
-				for (GenericEvent event : events) {
-					event.setTest(i % 10 == segment);
-					i++;
+			if (outDirPath==null)
+				throw new RuntimeException("Missing argument: outDir");
+
+			File outDir = new File(outDirPath);
+			outDir.mkdirs();
+			String fileBase = this.featureDir.replace('/', '_');
+			fileBase = fileBase.replace(':', '_');
+			File fscoreFile = new File(outDir, fileBase + "_fscores.csv");
+			Writer fscoreFileWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fscoreFile, false),"UTF8"));
+			try {
+				Mean accuracyMean = new Mean();
+				StandardDeviation accuracyStdDev = new StandardDeviation();
+				Map<String,Mean[]> outcomeFscoreMeans = new TreeMap<String, Mean[]>();
+				Map<String,StandardDeviation[]> outcomeFscoreStdDevs = new TreeMap<String, StandardDeviation[]>();
+				for (int segment = 0; segment<=9; segment++) {
+					fscoreFileWriter.write("Run " + segment + ",\n");
+					if (balanceOutcomes) {
+						for (String outcome : reader.getOutcomes()) {
+							int i = 0;
+							for (GenericEvent event : events) {
+								if (event.getOutcome().equals(outcome)) {
+									boolean test = i % 10 == segment;
+									event.setTest(test);
+									i++;
+								}
+							}		
+						}
+					} else {
+						int i = 0;
+						for (GenericEvent event : events) {
+							boolean test = i % 10 == segment;
+							event.setTest(test);
+							i++;
+						}
+					}
+					
+					MaxentModel maxentModel = this.train(events, null);
+					FScoreCalculator<String> fscoreCalculator = this.evaluate(maxentModel, events, fscoreFileWriter);
+					accuracyMean.increment(fscoreCalculator.getTotalFScore());
+					accuracyStdDev.increment(fscoreCalculator.getTotalFScore());
+					for (String outcome : fscoreCalculator.getOutcomeSet()) {
+						Mean[] means = outcomeFscoreMeans.get(outcome);
+						StandardDeviation[] stdDevs = outcomeFscoreStdDevs.get(outcome);
+						if (means==null) {
+							means = new Mean[3];
+							stdDevs = new StandardDeviation[3];
+							means[0] = new Mean();
+							means[1] = new Mean();
+							means[2] = new Mean();
+							stdDevs[0] = new StandardDeviation();
+							stdDevs[1] = new StandardDeviation();
+							stdDevs[2] = new StandardDeviation();
+							outcomeFscoreMeans.put(outcome, means);
+							outcomeFscoreStdDevs.put(outcome, stdDevs);
+						}
+						means[0].increment(fscoreCalculator.getPrecision(outcome));
+						means[1].increment(fscoreCalculator.getRecall(outcome));
+						means[2].increment(fscoreCalculator.getFScore(outcome));
+						stdDevs[0].increment(fscoreCalculator.getPrecision(outcome));
+						stdDevs[1].increment(fscoreCalculator.getRecall(outcome));
+						stdDevs[2].increment(fscoreCalculator.getFScore(outcome));
+					} // next outcome
+				} // next segment
+			
+				fscoreFileWriter.write("outcome,precision avg., precision sigma, recall avg., recall sigma, f-score avg., f-score sigma,\n");
+				for (String outcome : outcomeFscoreMeans.keySet()) {
+					Mean[] means = outcomeFscoreMeans.get(outcome);
+					StandardDeviation[] stdDevs = outcomeFscoreStdDevs.get(outcome);
+					fscoreFileWriter.write(CSVFormatter.format(outcome) + ","
+							+ CSVFormatter.format(means[0].getResult()) + ","
+							+ CSVFormatter.format(stdDevs[0].getResult()) + ","
+							+ CSVFormatter.format(means[1].getResult()) + ","
+							+ CSVFormatter.format(stdDevs[1].getResult()) + ","
+							+ CSVFormatter.format(means[2].getResult()) + ","
+							+ CSVFormatter.format(stdDevs[2].getResult()) + ","
+							+ "\n");
 				}
-				MaxentModel maxentModel = this.train(events, null);
-				double accuracy = this.evaluate(maxentModel, events);
-				accuracyMean.increment(accuracy);
-				accuracyStdDev.increment(accuracy);
+				fscoreFileWriter.write("TOTAL,,,,,"
+						+ CSVFormatter.format(accuracyMean.getResult()) + "," + CSVFormatter.format(accuracyStdDev.getResult()) + ",\n" );
+				
+				LOG.info("Accuracy mean: " + accuracyMean.getResult());
+				LOG.info("Accuracy std dev: " + accuracyStdDev.getResult());
+			} finally {
+				fscoreFileWriter.flush();
+				fscoreFileWriter.close();
 			}
-			LOG.info("Accuracy mean: " + accuracyMean.getResult());
-			LOG.info("Accuracy std dev: " + accuracyStdDev.getResult());
 		}
 		
 		LOG.info("#### Complete ####");		
@@ -497,10 +617,10 @@ public class CSVLearner {
 	private void doCommandNormalise() throws IOException {
 		if (featureDir==null)
 			throw new RuntimeException("Missing argument: featureDir");
-		if (outDir==null)
+		if (outDirPath==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdirs();
+		new File(outDirPath).mkdirs();
 		
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, true);
 		
@@ -551,7 +671,7 @@ public class CSVLearner {
 			if (normaliseMethod.equals(NormaliseMethod.NORMALISE_BY_MEAN))
 				prefix += "mean_";
 			
-			File file = new File(outDir + "/" + prefix + filename);
+			File file = new File(outDirPath + "/" + prefix + filename);
 			CSVEventListWriter eventListWriter = new CSVEventListWriter(file);
 			if (filename.endsWith(".zip"))
 				eventListWriter.setFilePerEvent(zipEntryPerEvent);
@@ -562,7 +682,7 @@ public class CSVLearner {
 			eventListWriter.writeFile(events);
 			
 			if (!havePreviousLimits) {
-				File normalisationLimitFile = new File(outDir + "/" + prefix + filename + ".nrm_limits.csv");
+				File normalisationLimitFile = new File(outDirPath + "/" + prefix + filename + ".nrm_limits.csv");
 				NormalisationLimitWriter limitWriter = new NormalisationLimitWriter(normalisationLimitFile);
 				limitWriter.writeFile(normalisationLimits);
 			}
@@ -575,10 +695,10 @@ public class CSVLearner {
 			throw new RuntimeException("Missing argument: resultFile");
 		if (featureDir==null)
 			throw new RuntimeException("Missing argument: featureDir");
-		if (outDir==null)
+		if (outDirPath==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdirs();
+		new File(outDirPath).mkdirs();
 		
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, true);
 		
@@ -596,7 +716,7 @@ public class CSVLearner {
 				Set<Double> splitValues = classifier.discretizeFeature(events, feature);
 				classificationLimits.put(feature, splitValues);
 			}
-			File file = new File(outDir + "/c_" + filename);
+			File file = new File(outDirPath + "/c_" + filename);
 			CSVEventListWriter eventListWriter = new CSVEventListWriter(file);
 			if (filename.endsWith(".zip"))
 				eventListWriter.setFilePerEvent(zipEntryPerEvent);
@@ -606,7 +726,7 @@ public class CSVLearner {
 				eventListWriter.setIdentifierPrefix(identifierPrefix);
 			eventListWriter.writeFile(events);
 			// we also need to write the classification limits
-			File classLimitFile = new File(outDir + "/c_" + filename + ".dsc_limits.csv");
+			File classLimitFile = new File(outDirPath + "/c_" + filename + ".dsc_limits.csv");
 			FeatureDiscreteLimitWriter classLimitWriter = new FeatureDiscreteLimitWriter(classLimitFile);
 			classLimitWriter.writeFile(classificationLimits);
 		}
@@ -617,10 +737,10 @@ public class CSVLearner {
 			throw new RuntimeException("Missing argument: resultFile");
 		if (featureDir==null)
 			throw new RuntimeException("Missing argument: featureDir");
-		if (outDir==null)
+		if (outDirPath==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdirs();
+		new File(outDirPath).mkdirs();
 		
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, true);
 		
@@ -640,7 +760,7 @@ public class CSVLearner {
 					featureEntropies.put(feature, levelEntropies);
 				}
 				// we also need to write the entropies to a file
-				File featureEntropyFile = new File(outDir + "/c_" + filename + ".entropies.csv");
+				File featureEntropyFile = new File(outDirPath + "/c_" + filename + ".entropies.csv");
 				FeatureEntropyWriter featureEntropyWriter = new FeatureEntropyWriter(featureEntropyFile);
 				featureEntropyWriter.writeFile(featureEntropies);
 			}
@@ -652,12 +772,12 @@ public class CSVLearner {
 			throw new RuntimeException("Missing argument: resultFile");
 		if (featureDir==null)
 			throw new RuntimeException("Missing argument: featureDir");
-		if (outDir==null)
+		if (outDirPath==null)
 			throw new RuntimeException("Missing argument: outDir");
 		if (maxDepth<=0)
 			throw new RuntimeException("Missing argument: maxDepth");
 		
-		new File(outDir).mkdirs();
+		new File(outDirPath).mkdirs();
 					
 		CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, false);
 		
@@ -665,7 +785,7 @@ public class CSVLearner {
 		FeatureSplitter featureSplitter = this.getFeatureSplitter();
 		BestFeatureFinder bestFeatureFinder = new BestFeatureFinder(featureSplitter);
 		
-		File bestFeatureFile = new File(outDir + "/bestFeatures.csv");
+		File bestFeatureFile = new File(outDirPath + "/bestFeatures.csv");
 		bestFeatureFile.delete();
 		bestFeatureFile.createNewFile();
 		
@@ -697,7 +817,7 @@ public class CSVLearner {
 		}
 		
 		for (int featureListSize=100; featureListSize<=featureCount; featureListSize+=100) {
-			File featureListFile = new File(outDir + "/bestFeatureList" + featureListSize + ".txt");
+			File featureListFile = new File(outDirPath + "/bestFeatureList" + featureListSize + ".txt");
 			featureListFile.delete();
 			featureListFile.createNewFile();
 			bestFeatureWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(featureListFile, true),"UTF8"));
@@ -713,17 +833,17 @@ public class CSVLearner {
 	private void doCommandCopy() throws IOException {
 		if (featureDir==null)
 			throw new RuntimeException("Missing argument: featureDir");
-		if (outDir==null)
+		if (outDirPath==null)
 			throw new RuntimeException("Missing argument: outDir");
 		LOG.info("Generating event list from CSV files...");
-		new File(outDir).mkdirs();
+		new File(outDirPath).mkdirs();
 		
 		
 		if (singleFile!=null) {
 			CSVEventListReader reader = this.getReader(TrainingSetType.TEST_SEGMENT, false);
 			GenericEvents events = reader.getEvents();
 			
-			File file = new File(outDir + "/" + singleFile);
+			File file = new File(outDirPath + "/" + singleFile);
 			CSVEventListWriter eventListWriter = new CSVEventListWriter(file);
 			if (singleFile.endsWith(".zip"))
 				eventListWriter.setFilePerEvent(zipEntryPerEvent);
@@ -788,7 +908,7 @@ public class CSVLearner {
 				
 				if (filePrefix==null)
 					filePrefix = "";
-				File file = new File(outDir + "/" + filePrefix + filename);
+				File file = new File(outDirPath + "/" + filePrefix + filename);
 				CSVEventListWriter eventListWriter = new CSVEventListWriter(file);
 				if (filename.endsWith(".zip"))
 					eventListWriter.setFilePerEvent(zipEntryPerEvent);
@@ -833,6 +953,7 @@ public class CSVLearner {
 		reader.setTestSegment(testSegment);
 		reader.setGroupedFeatureDirPath(groupedFeatureDir);
 		reader.setTrainingSetType(trainingSetType);
+		reader.setIncludedOutcomes(includedOutcomes);
 		reader.setExcludedOutcomes(excludedOutcomes);
 		reader.setSkipUnknownEvents(skipUnknownEvents);
 		reader.setSplitEventsByFile(splitEventsByFile);
@@ -877,7 +998,7 @@ public class CSVLearner {
 		}
 	}
 	
-	private double evaluate(MaxentModel model, GenericEvents events) {
+	private FScoreCalculator<String> evaluate(MaxentModel model, GenericEvents events, Writer fscoreFileWriter) throws IOException {
 		LOG.info("Evaluating test events...");
 
 		MaxentAnalyser analyser = new MaxentAnalyser();
@@ -912,10 +1033,15 @@ public class CSVLearner {
 		if (!crossValidation) {
 			File fscoreFile = new File(maxentModelFilePath + ".fscores.csv");
 			fscoreCalculator.writeScoresToCSVFile(fscoreFile);
+		} else if (fscoreFileWriter!=null) {
+			try {
+				fscoreCalculator.writeScoresToCSV(fscoreFileWriter);
+			} finally {
+				fscoreFileWriter.flush();
+			}
 		}
 		
-		return fscoreCalculator.getTotalFScore();
-
+		return fscoreCalculator;
 	}
 	
 	private void generateEventFile(File eventFile, GenericEvents events) throws IOException {

@@ -184,9 +184,15 @@ public class FScoreCalculator<E> {
 				totalFalsePositiveCount += falsePositiveCount;
 				totalFalseNegativeCount += falseNegativeCount;
 			}
-			totalPrecision = totalTruePositiveCount / (totalTruePositiveCount + totalFalsePositiveCount);
-			totalRecall = totalTruePositiveCount / (totalTruePositiveCount + totalFalseNegativeCount);
-			totalFScore = (2 * totalPrecision * totalRecall) / (totalPrecision + totalRecall);
+			totalPrecision = 0;
+			totalRecall = 0;
+			totalFScore = 0;
+			if (totalTruePositiveCount + totalFalsePositiveCount>0)
+				totalPrecision = totalTruePositiveCount / (totalTruePositiveCount + totalFalsePositiveCount);
+			if (totalTruePositiveCount + totalFalseNegativeCount>0)
+				totalRecall = totalTruePositiveCount / (totalTruePositiveCount + totalFalseNegativeCount);
+			if (totalPrecision + totalRecall>0)
+				totalFScore = (2 * totalPrecision * totalRecall) / (totalPrecision + totalRecall);
 			LOG.info("Total tests: " + testCount);
 			LOG.info("Total true positives: " + totalTruePositiveCount);
 			LOG.info("Total false positives: " + totalFalsePositiveCount);
@@ -474,6 +480,7 @@ public class FScoreCalculator<E> {
 			fscoreFileWriter.write(df.format((totalPrecisionSum/outcomeSet.size())*100)+",");
 			fscoreFileWriter.write(df.format((totalRecallSum/outcomeSet.size())*100)+",");
 			fscoreFileWriter.write(df.format((totalFscoreSum/outcomeSet.size())*100)+",");
+			fscoreFileWriter.write("\n");
 			fscoreFileWriter.write("\n");
 		} catch (IOException ioe) {
 			throw new RuntimeException(ioe);

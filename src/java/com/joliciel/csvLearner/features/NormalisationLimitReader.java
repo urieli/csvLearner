@@ -68,16 +68,16 @@ public class NormalisationLimitReader {
 						if (oneFile.isDirectory()) {
 							directoryStack.push(oneFile);
 						} else if (oneFile.getName().endsWith(".nrm_limits.csv")) {
-							LOG.debug("Scanning file : " + oneFile.getName());
+							LOG.debug("Scanning limits file : " + oneFile.getName());
 							this.readCSVFile(new FileInputStream(oneFile), featureToMaxMap);
 						} else {
-							LOG.debug("Ignoring : " + oneFile.getName());
+							LOG.trace("Ignoring : " + oneFile.getName());
 						}
 					}
 	
 				}
 			} else {
-				LOG.debug("Scanning file : " + file.getName());
+				LOG.debug("Scanning limits file : " + file.getName());
 				this.readCSVFile(new FileInputStream(file), featureToMaxMap);
 			}
 		} catch (FileNotFoundException e) {
