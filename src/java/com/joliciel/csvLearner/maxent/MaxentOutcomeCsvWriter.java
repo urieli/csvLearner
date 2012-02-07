@@ -121,7 +121,6 @@ public class MaxentOutcomeCsvWriter implements MaxentObserver {
 	public void onTerminate() {
 		try {
 			this.writer.flush();
-			this.writer.close();
 		} catch (IOException ioe) {
 			throw new RuntimeException(ioe);
 		}			

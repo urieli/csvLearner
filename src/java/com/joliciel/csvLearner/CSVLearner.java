@@ -46,9 +46,7 @@ import java.util.Vector;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.math.stat.descriptive.moment.Mean;
-import org.apache.commons.math.stat.descriptive.moment.StandardDeviation;
-
+import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import com.joliciel.csvLearner.CSVEventListReader.TrainingSetType;
 import com.joliciel.csvLearner.features.BestFeatureFinder;
 import com.joliciel.csvLearner.features.FayyadIraniSplitter;
@@ -394,7 +392,7 @@ public class CSVLearner {
 			zos.flush();
 			zos.close();
 			
-			this.evaluate(maxentModel, events, null);
+			this.evaluate(maxentModel, events, null, null);
 		} else {
 			if (outDirPath==null)
 				throw new RuntimeException("Missing argument: outDir");
@@ -403,14 +401,19 @@ public class CSVLearner {
 			outDir.mkdirs();
 			String fileBase = this.featureDir.replace('/', '_');
 			fileBase = fileBase.replace(':', '_');
+			fileBase = fileBase + "_cutoff" + cutoff;
+			
 			File fscoreFile = new File(outDir, fileBase + "_fscores.csv");
 			Writer fscoreFileWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fscoreFile, false),"UTF8"));
+			
+			File outcomeFile = new File(outDir, fileBase + "_outcomes.csv");
+			Writer outcomeFileWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outcomeFile, false),"UTF8"));
+
 			try {
-				Mean accuracyMean = new Mean();
-				StandardDeviation accuracyStdDev = new StandardDeviation();
-				Map<String,Mean[]> outcomeFscoreMeans = new TreeMap<String, Mean[]>();
-				Map<String,StandardDeviation[]> outcomeFscoreStdDevs = new TreeMap<String, StandardDeviation[]>();
+				DescriptiveStatistics accuracyStats = new DescriptiveStatistics();
+				Map<String,DescriptiveStatistics[]> outcomeFscoreStats = new TreeMap<String, DescriptiveStatistics[]>();
 				for (int segment = 0; segment<=9; segment++) {
+					outcomeFileWriter.write("Run " + segment + ",\n");
 					fscoreFileWriter.write("Run " + segment + ",\n");
 					if (balanceOutcomes) {
 						for (String outcome : reader.getOutcomes()) {
@@ -433,54 +436,50 @@ public class CSVLearner {
 					}
 					
 					MaxentModel maxentModel = this.train(events, null);
-					FScoreCalculator<String> fscoreCalculator = this.evaluate(maxentModel, events, fscoreFileWriter);
-					accuracyMean.increment(fscoreCalculator.getTotalFScore());
-					accuracyStdDev.increment(fscoreCalculator.getTotalFScore());
+					FScoreCalculator<String> fscoreCalculator = this.evaluate(maxentModel, events, fscoreFileWriter, outcomeFileWriter);
+					
+					
+					accuracyStats.addValue(fscoreCalculator.getTotalFScore());
 					for (String outcome : fscoreCalculator.getOutcomeSet()) {
-						Mean[] means = outcomeFscoreMeans.get(outcome);
-						StandardDeviation[] stdDevs = outcomeFscoreStdDevs.get(outcome);
-						if (means==null) {
-							means = new Mean[3];
-							stdDevs = new StandardDeviation[3];
-							means[0] = new Mean();
-							means[1] = new Mean();
-							means[2] = new Mean();
-							stdDevs[0] = new StandardDeviation();
-							stdDevs[1] = new StandardDeviation();
-							stdDevs[2] = new StandardDeviation();
-							outcomeFscoreMeans.put(outcome, means);
-							outcomeFscoreStdDevs.put(outcome, stdDevs);
+						DescriptiveStatistics[] stats = outcomeFscoreStats.get(outcome);
+						if (stats==null) {
+							stats = new DescriptiveStatistics[3];
+							stats[0] = new DescriptiveStatistics();
+							stats[1] = new DescriptiveStatistics();
+							stats[2] = new DescriptiveStatistics();
+							outcomeFscoreStats.put(outcome, stats);
 						}
-						means[0].increment(fscoreCalculator.getPrecision(outcome));
-						means[1].increment(fscoreCalculator.getRecall(outcome));
-						means[2].increment(fscoreCalculator.getFScore(outcome));
-						stdDevs[0].increment(fscoreCalculator.getPrecision(outcome));
-						stdDevs[1].increment(fscoreCalculator.getRecall(outcome));
-						stdDevs[2].increment(fscoreCalculator.getFScore(outcome));
+						stats[0].addValue(fscoreCalculator.getPrecision(outcome));
+						stats[1].addValue(fscoreCalculator.getRecall(outcome));
+						stats[2].addValue(fscoreCalculator.getFScore(outcome));
 					} // next outcome
+					
+					outcomeFileWriter.write("\n");
+					
 				} // next segment
 			
-				fscoreFileWriter.write("outcome,precision avg., precision sigma, recall avg., recall sigma, f-score avg., f-score sigma,\n");
-				for (String outcome : outcomeFscoreMeans.keySet()) {
-					Mean[] means = outcomeFscoreMeans.get(outcome);
-					StandardDeviation[] stdDevs = outcomeFscoreStdDevs.get(outcome);
+				fscoreFileWriter.write("outcome,precision avg., precision dev., recall avg., recall dev., f-score avg., f-score dev.,\n");
+				for (String outcome : outcomeFscoreStats.keySet()) {
+					DescriptiveStatistics[] stats = outcomeFscoreStats.get(outcome);
 					fscoreFileWriter.write(CSVFormatter.format(outcome) + ","
-							+ CSVFormatter.format(means[0].getResult()) + ","
-							+ CSVFormatter.format(stdDevs[0].getResult()) + ","
-							+ CSVFormatter.format(means[1].getResult()) + ","
-							+ CSVFormatter.format(stdDevs[1].getResult()) + ","
-							+ CSVFormatter.format(means[2].getResult()) + ","
-							+ CSVFormatter.format(stdDevs[2].getResult()) + ","
+							+ CSVFormatter.format(stats[0].getMean()) + ","
+							+ CSVFormatter.format(stats[0].getStandardDeviation()) + ","
+							+ CSVFormatter.format(stats[1].getMean()) + ","
+							+ CSVFormatter.format(stats[1].getStandardDeviation()) + ","
+							+ CSVFormatter.format(stats[2].getMean()) + ","
+							+ CSVFormatter.format(stats[2].getStandardDeviation()) + ","
 							+ "\n");
 				}
 				fscoreFileWriter.write("TOTAL,,,,,"
-						+ CSVFormatter.format(accuracyMean.getResult()) + "," + CSVFormatter.format(accuracyStdDev.getResult()) + ",\n" );
+						+ CSVFormatter.format(accuracyStats.getMean()) + "," + CSVFormatter.format(accuracyStats.getStandardDeviation()) + ",\n" );
 				
-				LOG.info("Accuracy mean: " + accuracyMean.getResult());
-				LOG.info("Accuracy std dev: " + accuracyStdDev.getResult());
+				LOG.info("Accuracy mean: " + accuracyStats.getMean());
+				LOG.info("Accuracy std dev: " + accuracyStats.getStandardDeviation());
 			} finally {
 				fscoreFileWriter.flush();
 				fscoreFileWriter.close();
+				outcomeFileWriter.flush();
+				outcomeFileWriter.close();
 			}
 		}
 		
@@ -998,50 +997,70 @@ public class CSVLearner {
 		}
 	}
 	
-	private FScoreCalculator<String> evaluate(MaxentModel model, GenericEvents events, Writer fscoreFileWriter) throws IOException {
+	private FScoreCalculator<String> evaluate(MaxentModel model, GenericEvents events, Writer fscoreFileWriter, Writer outcomeFileWriter) throws IOException {
 		LOG.info("Evaluating test events...");
+		try {
 
-		MaxentAnalyser analyser = new MaxentAnalyser();
-		analyser.setMaxentModel(model);
-		if (preferredOutcome!=null) {
-			analyser.setPreferredOutcome(preferredOutcome);
-			analyser.setBias(bias);
-		}
-		if (!crossValidation) {
-			File outcomeFile = new File(maxentModelFilePath + ".outcomes.csv");
-			MaxentOutcomeCsvWriter csvWriter = new MaxentOutcomeCsvWriter(model, outcomeFile);
-			csvWriter.setMinProbToConsider(minProbToConsider);
-			csvWriter.setUnknownOutcomeName(unknownOutcomeName);
-			analyser.addObserver(csvWriter);
-		}
-		
-		MaxentFScoreCalculator maxentFScoreCalculator = new MaxentFScoreCalculator();
-		maxentFScoreCalculator.setMinProbToConsider(minProbToConsider);
-		maxentFScoreCalculator.setUnknownOutcomeName(unknownOutcomeName);
-		analyser.addObserver(maxentFScoreCalculator);
-		
-		if (!crossValidation && generateDetailFile) {
-			File detailFile = new File(maxentModelFilePath + ".details.txt");
-			analyser.addObserver(new MaxentDetailedAnalysisWriter(model, detailFile));
-		}
-				
-		analyser.analyse(events);
-		
-		FScoreCalculator<String> fscoreCalculator = maxentFScoreCalculator.getFscoreCalculator();
-		
-		LOG.info("F-score: " + fscoreCalculator.getTotalFScore());
-		if (!crossValidation) {
-			File fscoreFile = new File(maxentModelFilePath + ".fscores.csv");
-			fscoreCalculator.writeScoresToCSVFile(fscoreFile);
-		} else if (fscoreFileWriter!=null) {
-			try {
+			MaxentAnalyser analyser = new MaxentAnalyser();
+			analyser.setMaxentModel(model);
+			if (preferredOutcome!=null) {
+				analyser.setPreferredOutcome(preferredOutcome);
+				analyser.setBias(bias);
+			}
+			if (!crossValidation) {
+				File outcomeFile = new File(maxentModelFilePath + ".outcomes.csv");
+				outcomeFileWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outcomeFile, false),"UTF8"));
+				MaxentOutcomeCsvWriter csvWriter = new MaxentOutcomeCsvWriter(model, outcomeFileWriter);
+				csvWriter.setMinProbToConsider(minProbToConsider);
+				csvWriter.setUnknownOutcomeName(unknownOutcomeName);
+				analyser.addObserver(csvWriter);
+			} else if (outcomeFileWriter!=null) {
+				MaxentOutcomeCsvWriter csvWriter = new MaxentOutcomeCsvWriter(model, outcomeFileWriter);
+				csvWriter.setMinProbToConsider(minProbToConsider);
+				csvWriter.setUnknownOutcomeName(unknownOutcomeName);
+				analyser.addObserver(csvWriter);
+			}
+			
+			MaxentFScoreCalculator maxentFScoreCalculator = new MaxentFScoreCalculator();
+			maxentFScoreCalculator.setMinProbToConsider(minProbToConsider);
+			maxentFScoreCalculator.setUnknownOutcomeName(unknownOutcomeName);
+			analyser.addObserver(maxentFScoreCalculator);
+			
+			if (!crossValidation && generateDetailFile) {
+				File detailFile = new File(maxentModelFilePath + ".details.txt");
+				analyser.addObserver(new MaxentDetailedAnalysisWriter(model, detailFile));
+			}
+					
+			analyser.analyse(events);
+			
+			if (!crossValidation && outcomeFileWriter!=null)
+				outcomeFileWriter.close();
+			
+			FScoreCalculator<String> fscoreCalculator = maxentFScoreCalculator.getFscoreCalculator();
+			
+			LOG.info("F-score: " + fscoreCalculator.getTotalFScore());
+			if (!crossValidation) {
+				File fscoreFile = new File(maxentModelFilePath + ".fscores.csv");
+				fscoreCalculator.writeScoresToCSVFile(fscoreFile);
+			} else if (fscoreFileWriter!=null) {
 				fscoreCalculator.writeScoresToCSV(fscoreFileWriter);
-			} finally {
-				fscoreFileWriter.flush();
+			}
+			
+			return fscoreCalculator;
+		} finally {
+			if (outcomeFileWriter!=null) {
+				if (crossValidation)
+					outcomeFileWriter.flush();
+				else
+					outcomeFileWriter.close();
+			}
+			if (fscoreFileWriter!=null) {
+				if (crossValidation)
+					fscoreFileWriter.flush();
+				else
+					fscoreFileWriter.close();
 			}
 		}
-		
-		return fscoreCalculator;
 	}
 	
 	private void generateEventFile(File eventFile, GenericEvents events) throws IOException {
