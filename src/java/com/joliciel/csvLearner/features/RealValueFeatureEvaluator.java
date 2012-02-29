@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner.features;
@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -76,7 +76,7 @@ public class RealValueFeatureEvaluator {
 		long startTimeInitialise = (new Date()).getTime();
 
 		PriorityQueue<NameValuePair> heap = new PriorityQueue<NameValuePair>(events.size());
-		Collection<NameValuePair> featureValues = new Vector<NameValuePair>();
+		Collection<NameValuePair> featureValues = new ArrayList<NameValuePair>();
 		Map<String,Integer> eventOutcomeMap = new TreeMap<String,Integer>();
 		Map<String,Integer> featureOutcomeMap = new TreeMap<String,Integer>();
 		Map<String,Integer> nonFeatureOutcomeMap = new TreeMap<String,Integer>();
@@ -84,9 +84,9 @@ public class RealValueFeatureEvaluator {
 		List<String> outcomes = null;
 		if (testOutcome==null) {
 			Set<String> outcomeSet = events.getOutcomes();
-			outcomes = new Vector<String>(outcomeSet);
+			outcomes = new ArrayList<String>(outcomeSet);
 		} else {
-			outcomes = new Vector<String>();
+			outcomes = new ArrayList<String>();
 			outcomes.add(testOutcome);
 			outcomes.add("");
 		}
@@ -154,7 +154,7 @@ public class RealValueFeatureEvaluator {
 		long endTimeInitialEntropy = (new Date()).getTime();
 		totalTimeInitialEntropy += (endTimeInitialEntropy - startTimeInitialEntropy);
 		
-		List<Double> entropyByLevel = new Vector<Double>();
+		List<Double> entropyByLevel = new ArrayList<Double>();
 		entropyByLevel.add(eventSpaceEntropy);
 		
 		double proportionalFeatureEntropy = ((double)featureCount/(double)eventCount)*featureEntropy;
@@ -169,7 +169,7 @@ public class RealValueFeatureEvaluator {
 			LOG.trace("level 0 Entropy: " + level0Entropy);
 		}
 		
-		List<NameValuePair> featureValueList = new Vector<NameValuePair>(featureValues);
+		List<NameValuePair> featureValueList = new ArrayList<NameValuePair>(featureValues);
 		long startTimeSplit = (new Date()).getTime();
 		featureSplitter.split(featureValueList);
 		long endTimeSplit = (new Date()).getTime();

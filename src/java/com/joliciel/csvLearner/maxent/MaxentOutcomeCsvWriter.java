@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner.maxent;
@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import com.joliciel.csvLearner.GenericEvent;
 import com.joliciel.csvLearner.NameValuePair;
@@ -47,7 +47,7 @@ import opennlp.model.MaxentModel;
 public class MaxentOutcomeCsvWriter implements MaxentObserver {
 	private Writer writer;
 	private MaxentModel maxentModel;
-	private List<String> outcomeList = new Vector<String>();
+	private List<String> outcomeList = new ArrayList<String>();
 	private double minProbToConsider = 0.0;
 	private String unknownOutcomeName = "";
 

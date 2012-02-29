@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner.features;
@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -95,7 +95,7 @@ public class RealValueFeatureDiscretizer {
 					featureValues.add(new NameValuePair(event.getOutcome(), event.getWeights().get(featureIndex)));
 			}
 		}
-		List<NameValuePair> featureValueList = new Vector<NameValuePair>(featureValues);
+		List<NameValuePair> featureValueList = new ArrayList<NameValuePair>(featureValues);
 
 		List<Integer> splits = featureSplitter.split(featureValueList);
 		Set<Double> splitValues = new TreeSet<Double>();

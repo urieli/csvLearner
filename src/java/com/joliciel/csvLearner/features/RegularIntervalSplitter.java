@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import com.joliciel.csvLearner.NameValuePair;
 
@@ -49,7 +49,7 @@ public class RegularIntervalSplitter implements FeatureSplitter {
 				currentLevelSplits.add(new Split(featureValues, lastSplit, featureValues.size()-1));
 		}
 		
-		List<Integer> splits = new Vector<Integer>();
+		List<Integer> splits = new ArrayList<Integer>();
 		for (Split split : splitsByDepth.get(maxDepth))
 			splits.add(split.getEndIndex());
 		return splits;

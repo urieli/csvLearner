@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner.utils;
@@ -21,7 +21,7 @@ package com.joliciel.csvLearner.utils;
 import java.text.DecimalFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.Vector;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -71,10 +71,10 @@ public class CSVFormatter {
 	 * @return
 	 */
 	public static List<String> getCSVCells(String csvLine) {
-		List<String> cells = new Vector<String>();
+		List<String> cells = new ArrayList<String>();
 		Matcher matcher = csvSeparators.matcher(csvLine);
 		int currentPos = 0;
-		List<String> tokens = new Vector<String>();
+		List<String> tokens = new ArrayList<String>();
 		while (matcher.find()) {
 			if (matcher.start() > currentPos) {
 				tokens.add(csvLine.substring(currentPos, matcher.start()));

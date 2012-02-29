@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner;
@@ -30,7 +30,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Vector;
+import java.util.ArrayList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -73,6 +73,7 @@ public class CSVEventListReader {
 	private Collection<String> includedFeatures = null;
 	private Set<String> featuresToInclude = null;
 	private Set<String> outcomes = new TreeSet<String>();
+	private Set<String> testIds = null;
 	
 	private boolean skipUnknownEvents = false;
 	
@@ -133,17 +134,27 @@ public class CSVEventListReader {
 						}
 						
 						if (includeEvent) {
+							if (eventMap.containsKey(ref)) {
+								throw new RuntimeException("Duplicate identifier in result file: " + ref);
+							}
+							
 							GenericEvent event = new GenericEvent(ref);
 							outcomes.add(outcome);
 							event.setOutcome(outcome);
-							if (trainingSetType.equals(TrainingSetType.ALL_TRAINING))
+							if (testIds!=null) {
+								if (testIds.contains(ref))
+									event.setTest(true);
+								else
+									event.setTest(false);
+							} else if (trainingSetType.equals(TrainingSetType.ALL_TRAINING)) {
 								event.setTest(false);
-							else if (trainingSetType.equals(TrainingSetType.ALL_TEST))
+							} else if (trainingSetType.equals(TrainingSetType.ALL_TEST)) {
 								event.setTest(true);
-							else if (trainingSetType.equals(TrainingSetType.TEST_SEGMENT))
+							} else if (trainingSetType.equals(TrainingSetType.TEST_SEGMENT)) {
 								event.setTest(i % 10 == testSegment);
-							else 
+							} else {
 								throw new RuntimeException("Unknown TrainingSetType: " + trainingSetType);
+							}
 							eventMap.put(ref, event);
 							i++;
 						} else {
@@ -245,7 +256,7 @@ public class CSVEventListReader {
 				String line = scanner.nextLine();
 				List<String> cells = CSVFormatter.getCSVCells(line);
 				if (firstLine) {
-					featureNames = new Vector<String>();
+					featureNames = new ArrayList<String>();
 					for (String cell : cells) {
 						String featureName = cell.replace(' ', '_');
 						featureName = featureName.replace(",", "$comma$");
@@ -613,6 +624,18 @@ public class CSVEventListReader {
 	 */
 	public Set<String> getOutcomes() {
 		return outcomes;
+	}
+
+	/**
+	 * If provided, this will override the training set type to indicate the ids to be used for testing.
+	 * @return
+	 */
+	public Set<String> getTestIds() {
+		return testIds;
+	}
+
+	public void setTestIds(Set<String> testIds) {
+		this.testIds = testIds;
 	}
 
 

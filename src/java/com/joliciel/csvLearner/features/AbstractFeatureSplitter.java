@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner.features;
@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -60,14 +60,14 @@ public abstract class AbstractFeatureSplitter implements FeatureSplitter {
 		splitsByDepth = new TreeMap<Integer, Set<Split>>();
 		Split subset = new Split(featureValues, 0, featureValues.size()-1);
 		this.splitInternal(subset, splits, 1);
-		List<Integer> splitList = new Vector<Integer>(splits);
+		List<Integer> splitList = new ArrayList<Integer>(splits);
 		return splitList;
 	}
 
 	void splitInternal(Split subset, Set<Integer> splits, int depth) {
 		if (maxDepth>0 && depth>maxDepth)
 			return;
-		Collection<Split> theSplits = new Vector<Split>();
+		Collection<Split> theSplits = new ArrayList<Split>();
 		int splitIndex = this.split(subset, theSplits);
 
 		Set<Split> currentLevelSplits = this.splitsByDepth.get(depth);

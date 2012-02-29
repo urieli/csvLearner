@@ -3,7 +3,7 @@ package com.joliciel.csvLearner.features;
 import static org.junit.Assert.*;
 
 import java.util.List;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -19,7 +19,7 @@ public class FeatureSplitterTest {
 		InformationGainSplitter splitter = new InformationGainSplitter();
 		splitter.setInformationGainThreshold(0.01);
 		
-		List<NameValuePair> weightedOutcomes = new Vector<NameValuePair>();
+		List<NameValuePair> weightedOutcomes = new ArrayList<NameValuePair>();
 		weightedOutcomes.add(new NameValuePair("A", 1));
 		weightedOutcomes.add(new NameValuePair("B", 2));
 		weightedOutcomes.add(new NameValuePair("B", 3));
@@ -35,7 +35,7 @@ public class FeatureSplitterTest {
 	public void testSplitMultiple() {
 		InformationGainSplitter splitter = new InformationGainSplitter();
 		splitter.setInformationGainThreshold(0.01);
-		List<NameValuePair> weightedOutcomes = new Vector<NameValuePair>();
+		List<NameValuePair> weightedOutcomes = new ArrayList<NameValuePair>();
 		weightedOutcomes.add(new NameValuePair("A", 1));
 		weightedOutcomes.add(new NameValuePair("B", 2));
 		weightedOutcomes.add(new NameValuePair("B", 3));
@@ -53,7 +53,7 @@ public class FeatureSplitterTest {
 	@Test
 	public void testSplitMultipleFayyadAndIrani() {
 		FeatureSplitter splitter = new FayyadIraniSplitter();
-		List<NameValuePair> weightedOutcomes = new Vector<NameValuePair>();
+		List<NameValuePair> weightedOutcomes = new ArrayList<NameValuePair>();
 		weightedOutcomes.add(new NameValuePair("A", 1));
 		weightedOutcomes.add(new NameValuePair("B", 2));
 		weightedOutcomes.add(new NameValuePair("B", 3));

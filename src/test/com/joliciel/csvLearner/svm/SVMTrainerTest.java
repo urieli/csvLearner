@@ -3,7 +3,7 @@ package com.joliciel.csvLearner.svm;
 import static org.junit.Assert.*;
 
 import java.util.Collection;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,7 +41,7 @@ public class SVMTrainerTest {
 		event4.setOutcome("OutcomeC");
 		event4.setTest(true);
 		
-		Collection<GenericEvent> eventList = new Vector<GenericEvent>();
+		Collection<GenericEvent> eventList = new ArrayList<GenericEvent>();
 		eventList.add(event1);
 		eventList.add(event2);
 		eventList.add(event3);

@@ -4,16 +4,16 @@
 //This file is part of csvLearner.
 //
 //csvLearner is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
+//it under the terms of the GNU Affero General Public License as published by
 //the Free Software Foundation, either version 3 of the License, or
 //(at your option) any later version.
 //
 //csvLearner is distributed in the hope that it will be useful,
 //but WITHOUT ANY WARRANTY; without even the implied warranty of
 //MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
+//GNU Affero General Public License for more details.
 //
-//You should have received a copy of the GNU General Public License
+//You should have received a copy of the GNU Affero General Public License
 //along with csvLearner.  If not, see <http://www.gnu.org/licenses/>.
 //////////////////////////////////////////////////////////////////////////////
 package com.joliciel.csvLearner.maxent;
@@ -29,7 +29,7 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.Vector;
+import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -55,7 +55,7 @@ public class MaxentBestFeatureObserver implements MaxentObserver {
 	private static final Log LOG = LogFactory.getLog(MaxentBestFeatureObserver.class);
 	private MaxentModel maxentModel;
 	private int n = 0;
-	private List<String> outcomeList = new Vector<String>();
+	private List<String> outcomeList = new ArrayList<String>();
 	private String[] predicates;
 	private Context[] modelParameters;
 	private String[] outcomeNames;
@@ -167,7 +167,7 @@ public class MaxentBestFeatureObserver implements MaxentObserver {
 				double fileTotal = fileTotalObj==null ? 0 : fileTotalObj.doubleValue();
 				fileTotals.put(fileName, fileTotal + featureTotal.getValue());
 			}
-			List<NameValuePair> bestFeatures = new Vector<NameValuePair>();
+			List<NameValuePair> bestFeatures = new ArrayList<NameValuePair>();
 			double bestFeatureTotal = 0.0;
 			for (int i=0;i<n;i++) {
 				NameValuePair pair = heap.poll();
