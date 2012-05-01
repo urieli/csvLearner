@@ -543,9 +543,12 @@ public class CSVLearner {
 				analyser.setBias(bias);
 			}
 			
-			String outDirPath = outfilePath.substring(0, outfilePath.lastIndexOf('/'));
-			File outDir = new File(outDirPath);
-			outDir.mkdirs();
+			if (outfilePath.lastIndexOf('/')>=0) {
+				String outDirPath = outfilePath.substring(0, outfilePath.lastIndexOf('/'));
+
+				File outDir = new File(outDirPath);
+				outDir.mkdirs();
+			}
 
 			File outcomeFile = new File(outfilePath);
 
